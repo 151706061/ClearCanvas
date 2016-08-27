@@ -30,9 +30,9 @@ using ClearCanvas.Ris.Application.Common.ReportingWorkflow;
 
 namespace ClearCanvas.Ris.Client.Workflow
 {
-	[MenuAction("apply", "folderexplorer-items-contextmenu/Reassign", "Apply")]
-	[ButtonAction("apply", "folderexplorer-items-toolbar/Reassign", "Apply")]
-	[IconSet("apply", IconScheme.Colour, "Icons.AssignSmall.png", "Icons.AssignMedium.png", "Icons.AssignLarge.png")]
+	[MenuAction("apply", "folderexplorer-items-contextmenu/MenuReassign", "Apply")]
+	[ButtonAction("apply", "folderexplorer-items-toolbar/MenuReassign", "Apply")]
+	[IconSet("apply","Icons.AssignSmall.png", "Icons.AssignMedium.png", "Icons.AssignLarge.png")]
 	[EnabledStateObserver("apply", "Enabled", "EnabledChanged")]
 	[ActionPermission("apply", Application.Common.AuthorityTokens.Workflow.Report.Reassign)]
 	[ExtensionOf(typeof(RadiologistAdminWorkflowItemToolExtensionPoint))]

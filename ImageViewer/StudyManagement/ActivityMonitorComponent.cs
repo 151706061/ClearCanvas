@@ -549,6 +549,8 @@ namespace ClearCanvas.ImageViewer.StudyManagement
                 
                 if (PermissionsHelper.IsInRole(AuthorityTokens.ActivityMonitor.WorkItems.Prioritize))
                     this.StatAction = AddAction("stat", SR.MenuStatWorkItem, "StatToolSmall.png", SR.TooltipStatWorkItem, StatSelectedWorkItems);
+
+				UpdateActionEnablement();
 			}
 
 			public IList<long> SelectedWorkItemIDs
@@ -577,10 +579,17 @@ namespace ClearCanvas.ImageViewer.StudyManagement
 				var items = this.SelectedWorkItems.ToList();
 				var nonEmpty = items.Count > 0;
 
-				DeleteAction.Enabled = nonEmpty && items.All(IsDeletable);
-				CancelAction.Enabled = nonEmpty && items.All(IsCancelable);
-				RestartAction.Enabled = nonEmpty && items.All(IsRestartable);
-				StatAction.Enabled = nonEmpty && items.All(IsStatable);
+				if (DeleteAction != null)
+					DeleteAction.Enabled = nonEmpty && items.All(IsDeletable);
+
+				if (CancelAction != null)
+					CancelAction.Enabled = nonEmpty && items.All(IsCancelable);
+
+				if (RestartAction != null)
+					RestartAction.Enabled = nonEmpty && items.All(IsRestartable);
+
+				if (StatAction != null)
+					StatAction.Enabled = nonEmpty && items.All(IsStatable);
 			}
 
 			private bool IsDeletable(WorkItem w)

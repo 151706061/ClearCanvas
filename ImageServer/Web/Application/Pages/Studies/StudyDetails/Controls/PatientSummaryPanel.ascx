@@ -1,4 +1,4 @@
-<%--  License
+<%-- License
 
 // Copyright (c) 2013, ClearCanvas Inc.
 // All rights reserved.
@@ -22,20 +22,11 @@
 
 --%>
 
-<%-- License
-
-Copyright (c) 2011, ClearCanvas Inc.
-All rights reserved.
-http://www.clearcanvas.ca
-
-This software is licensed under the Open Software License v3.0.
-For the complete license, see http://www.clearcanvas.ca/OSLv3.0
---%>
-
 <%@ Control Language="C#" AutoEventWireup="true" Codebehind="PatientSummaryPanel.ascx.cs"
     Inherits="ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Controls.PatientSummaryPanel" %>
+<%@ Register TagPrefix="asp" Namespace="System.Web.UI.HtmlControls" Assembly="System.Web, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" %>
 
-    <table width="100%">
+<table width="100%">
         <tr>
             <td colspan="4">
                 <ccUI:PersonNameLabel ID="personName" runat="server" PersonNameType="Dicom" CssClass="PatientName" /></td>
@@ -56,6 +47,13 @@ For the complete license, see http://www.clearcanvas.ca/OSLv3.0
             <td>
                 <asp:Label ID="Label5" runat="server" Text="<%$Resources: Labels, PatientSummary_Gender %>" CssClass="PatientInfo"></asp:Label>
                 <asp:Label ID="PatientSex" runat="server" Text="PatientSex" CssClass="PatientInfo"></asp:Label>
+            </td>
+            <td>
+                <asp:Panel runat="server" ID="QCPanel">
+                    <asp:Label ID="QCReportLabel" runat="server" Text="<%$Resources: Labels, PatientSummary_QCReport %>" CssClass="PatientInfo"></asp:Label>
+				    <a runat="server" ID="QCReportLink" target="_blank" class="PatientInfo"></a>
+                    <asp:Image runat="server" Visible="False" ID="RequiresQCWarningIcon" SkinID="WarningSmall" ToolTip="This study is expected to be QC'ed" />
+                </asp:Panel>
             </td>
         </tr>
     </table>

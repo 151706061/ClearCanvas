@@ -45,11 +45,11 @@
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
     <TargetFrameworkProfile />
+    <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <OutputPath>bin\Debug\</OutputPath>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <BaseAddress>285212672</BaseAddress>
     <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
     <ConfigurationOverrideFile>
     </ConfigurationOverrideFile>
@@ -57,7 +57,6 @@
     <DocumentationFile>
     </DocumentationFile>
     <DebugSymbols>true</DebugSymbols>
-    <FileAlignment>4096</FileAlignment>
     <NoStdLib>false</NoStdLib>
     <NoWarn>1591, 0419, 1574, 1587</NoWarn>
     <Optimize>false</Optimize>
@@ -72,7 +71,6 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release\</OutputPath>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <BaseAddress>285212672</BaseAddress>
     <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
     <ConfigurationOverrideFile>
     </ConfigurationOverrideFile>
@@ -80,7 +78,6 @@
     <DocumentationFile>
     </DocumentationFile>
     <DebugSymbols>false</DebugSymbols>
-    <FileAlignment>4096</FileAlignment>
     <NoStdLib>false</NoStdLib>
     <NoWarn>1591, 0419, 1574, 1587</NoWarn>
     <Optimize>true</Optimize>
@@ -106,6 +103,7 @@
     <Reference Include="System">
       <Name>System</Name>
     </Reference>
+    <Reference Include="System.configuration" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
@@ -156,10 +154,6 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="ImageViewerControl.resx">
-      <SubType>Designer</SubType>
-      <DependentUpon>ImageViewerControl.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="SR.resx">
       <SubType>Designer</SubType>
       <Generator>ResXFileCodeGenerator</Generator>
@@ -190,8 +184,11 @@
     <Compile Include="ImageViewerControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="ImageViewerControl.Designer.cs">
-      <DependentUpon>ImageViewerControl.cs</DependentUpon>
+    <Compile Include="ViewSettings.cs" />
+    <Compile Include="ViewSettings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <DependentUpon>ViewSettings.settings</DependentUpon>
     </Compile>
     <Compile Include="TileInputTranslator.cs" />
     <Compile Include="SR.Designer.cs">
@@ -221,8 +218,13 @@
     <Service Include="{B4F97281-0DBD-4835-9ED8-7DFB966E87FF}" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="ClassDiagrams\ModelView.cd" />
     <None Include="ClassDiagrams\Rendering.cd" />
+    <None Include="ViewSettings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>ViewSettings.Designer.cs</LastGenOutput>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="ActivityMonitorComponentControl.resx">
@@ -265,7 +267,6 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Resources\About.png" />
     <EmbeddedResource Include="Resources\Splash.png" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

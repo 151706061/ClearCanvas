@@ -24,6 +24,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using ClearCanvas.Common;
 using ClearCanvas.Dicom.Network.Scu;
 using ClearCanvas.Dicom.Utilities.Statistics;
@@ -65,17 +66,17 @@ namespace ClearCanvas.Dicom.Network.Scp
             _verifier = verifier;
         	_complete = complete;
 
-            DicomScpExtensionPoint<TContext> ep = new DicomScpExtensionPoint<TContext>();
+            var ep = new DicomScpExtensionPoint<TContext>();
             object[] scps = ep.CreateExtensions();
 
             // First set the user parms for each of the extensions before we do anything with them.
             foreach (object obj in scps)
             {
-                IDicomScp<TContext> scp = obj as IDicomScp<TContext>;
-                scp.SetContext(_context);
+	            var scp = obj as IDicomScp<TContext>;
+	            if (scp != null) scp.SetContext(_context);
             }
 
-            // Now, create a dictionary with the extension to be used for each presentation context.
+	        // Now, create a dictionary with the extension to be used for each presentation context.
             foreach (byte pcid in parameters.GetPresentationContextIDs())
             {
                 if (parameters.GetPresentationContextResult(pcid) == DicomPresContextResult.Accept)
@@ -84,7 +85,8 @@ namespace ClearCanvas.Dicom.Network.Scp
                     TransferSyntax acceptedSyntax = parameters.GetAcceptedTransferSyntax(pcid);
                     foreach (object obj in scps)
                     {
-                        IDicomScp<TContext> scp = obj as IDicomScp<TContext>;
+                        var scp = obj as IDicomScp<TContext>;
+	                    if (scp == null) continue;
 
                         IList<SupportedSop> sops = scp.GetSupportedSopClasses();
                         foreach (SupportedSop sop in sops)
@@ -93,13 +95,12 @@ namespace ClearCanvas.Dicom.Network.Scp
                             {
                                 if (sop.SyntaxList.Contains(acceptedSyntax))
                                 {
-                                    if (!_extensionList.ContainsKey(pcid))
+	                                if (!_extensionList.ContainsKey(pcid))
                                     {
                                         _extensionList.Add(pcid, scp);
                                         break;
                                     }
-                                    else
-                                        Platform.Log(LogLevel.Error, "SOP Class {0} supported by more than one extension", sop.SopClass.Name);
+	                                Platform.Log(LogLevel.Error, "SOP Class {0} supported by more than one extension", sop.SopClass.Name);
                                 }
                             }
                         }
@@ -178,34 +179,48 @@ namespace ClearCanvas.Dicom.Network.Scp
                 server.SendAssociateReject(DicomRejectResult.Permanent, DicomRejectSource.ServiceUser, DicomRejectReason.NoReasonGiven);
                 return;
             }
-           
 
             server.SendAssociateAccept(association);
 
-            Platform.Log(LogLevel.Info, "Received association:\r\n{0}", association.ToString());      
+			// Optimization to speed query performance
+	        Task.Factory.StartNew(() => Platform.Log(LogLevel.Info, "Received association:\r\n{0}", association.ToString()));
         }
 
-        void IDicomServerHandler.OnReceiveRequestMessage(DicomServer server, ServerAssociationParameters association, byte presentationID, DicomMessage message)
-        {
-            IDicomScp<TContext> scp = _extensionList[presentationID];
+	    void IDicomServerHandler.OnReceiveRequestMessage(DicomServer server, ServerAssociationParameters association,
+	                                                     byte presentationId, DicomMessage message)
+	    {
+		    Task.Factory.StartNew(delegate
+			    {
+				    try
+				    {
+					    IDicomScp<TContext> scp = _extensionList[presentationId];
 
-            bool ok = scp.OnReceiveRequest(server, association, presentationID, message);
-            if (!ok)
-            {
-                Platform.Log(LogLevel.Error, "Unexpected error processing message of type {0}.  Aborting association.", message.SopClass.Name);
+					    bool ok = scp.OnReceiveRequest(server, association, presentationId, message);
+					    if (!ok)
+					    {
+						    Platform.Log(LogLevel.Error, "Unexpected error processing message of type {0}.  Aborting association.",
+						                 message.SopClass.Name);
 
-                server.SendAssociateAbort(DicomAbortSource.ServiceProvider, DicomAbortReason.NotSpecified);
+						    server.SendAssociateAbort(DicomAbortSource.ServiceProvider, DicomAbortReason.NotSpecified);
 
-            }
-			else if (_complete != null)
-            {
-				// Only save C-STORE-RQ messages
-				if (message.CommandField == DicomCommandField.CStoreRequest)
-            		_instances.Add(new StorageInstance(message));
-            }
-        }
+					    }
+					    else if (_complete != null)
+					    {
+						    // Only save C-STORE-RQ messages
+						    if (message.CommandField == DicomCommandField.CStoreRequest)
+							    _instances.Add(new StorageInstance(message));
+					    }
+				    }
+				    catch (Exception x)
+				    {
+					    Platform.Log(LogLevel.Error, x,
+					                 "Unexpected exception in OnReceiveImageLevelQuery.");
+						server.SendAssociateAbort(DicomAbortSource.ServiceProvider, DicomAbortReason.NotSpecified);
+				    }
+			    });
+	    }
 
-        void IDicomServerHandler.OnReceiveResponseMessage(DicomServer server, ServerAssociationParameters association, byte presentationID, DicomMessage message)
+	    void IDicomServerHandler.OnReceiveResponseMessage(DicomServer server, ServerAssociationParameters association, byte presentationId, DicomMessage message)
         {
             Platform.Log(LogLevel.Error, "Unexpectedly received OnReceiveResponseMessage callback from {0} to {1}.  Aborting association.", association.CallingAE, association.CalledAE);
             server.SendAssociateAbort(DicomAbortSource.ServiceUser, DicomAbortReason.UnexpectedPDU);
@@ -242,6 +257,25 @@ namespace ClearCanvas.Dicom.Network.Scp
             //Platform.Log(LogLevel.Info, "Unexpected timeout waiting for activity on association from {0} to {1}.", association.CallingAE, association.CalledAE);
         }
 
+		void IDicomServerHandler.OnReceiveDimseCommand(DicomServer server, ServerAssociationParameters association, byte presentationId,
+		                           DicomAttributeCollection command)
+		{
+			IDicomScp<TContext> scp = _extensionList[presentationId];
+
+			scp.ReceiveMessageAsFileStream(server, association, presentationId,
+			                               new DicomMessage(command, new DicomAttributeCollection()));
+		}
+
+		IDicomFilestreamHandler IDicomServerHandler.OnStartFilestream(DicomServer server, ServerAssociationParameters association, byte presentationId, DicomMessage message)
+		{
+			IDicomScp<TContext> scp = _extensionList[presentationId];
+			
+			if (message.CommandField == DicomCommandField.CStoreRequest)
+				_instances.Add(new StorageInstance(message));
+
+			return scp.OnStartFilestream(server, association, presentationId, message);
+		}
+        
         #endregion
     }
 }

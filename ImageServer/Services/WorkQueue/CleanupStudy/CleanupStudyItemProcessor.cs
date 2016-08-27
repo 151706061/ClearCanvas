@@ -29,12 +29,12 @@ using ClearCanvas.Common.Utilities;
 using ClearCanvas.Enterprise.Core;
 using ClearCanvas.ImageServer.Common;
 using ClearCanvas.ImageServer.Core.Validation;
+using ClearCanvas.ImageServer.Enterprise.Command;
 using ClearCanvas.ImageServer.Model;
 using ClearCanvas.ImageServer.Model.Brokers;
 using ClearCanvas.ImageServer.Model.EntityBrokers;
 using ClearCanvas.ImageServer.Model.Parameters;
 using ClearCanvas.ImageServer.Rules;
-using ClearCanvas.ImageServer.Common.Command;
 using ClearCanvas.ImageServer.Core.Command;
 using ClearCanvas.Dicom.Utilities.Command;
 using System.Collections.Generic;
@@ -61,7 +61,7 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.CleanupStudy
 			if (!LoadWritableStorageLocation(item))
 			{
 				Platform.Log(LogLevel.Warn, "Unable to find readable location when processing CleanupStudy WorkQueue item, rescheduling");
-                PostponeItem(item.ScheduledTime.AddMinutes(2), item.ExpirationTime.AddMinutes(2), "Unable to find readable location.");
+                PostponeItem(item.ScheduledTime.AddMinutes(2), item.ExpirationTime.GetValueOrDefault(Platform.Time).AddMinutes(2), "Unable to find readable location.");
 
 				return;
 			}
@@ -236,7 +236,7 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.CleanupStudy
                         ClearCanvas.ImageServer.Core.Command.DeleteDirectoryCommand deleteDir = new ClearCanvas.ImageServer.Core.Command.DeleteDirectoryCommand(fileInfo.Directory.FullName, false, true);
                         processor.AddCommand(deleteDir);
                     }
-                    catch (DirectoryNotFoundException ex)
+                    catch (DirectoryNotFoundException)
                     {
                         // ignore
                     }

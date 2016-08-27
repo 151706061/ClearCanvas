@@ -24,8 +24,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Web;
 using ClearCanvas.Enterprise.Core;
 using ClearCanvas.ImageServer.Core;
+using ClearCanvas.ImageServer.Core.Helpers;
 using ClearCanvas.ImageServer.Model;
 using ClearCanvas.ImageServer.Model.Brokers;
 using ClearCanvas.ImageServer.Model.EntityBrokers;
@@ -43,7 +45,7 @@ namespace ClearCanvas.ImageServer.Web.Common.Data
 
 		public bool RestoreStudy(Study theStudy)
 		{
-		    RestoreQueue restore = ServerHelper.InsertRestoreRequest(theStudy.LoadStudyStorage(HttpContextData.Current.ReadContext));
+			RestoreQueue restore = ServerHelper.InsertRestoreRequest(theStudy.LoadStudyStorage(HttpContext.Current.GetSharedPersistentContext()));
             if (restore==null)
                 throw new ApplicationException("Unable to restore the study. See the log file for details.");
 

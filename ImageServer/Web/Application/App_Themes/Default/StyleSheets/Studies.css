@@ -167,6 +167,14 @@
     text-decoration: none;
 }
 
+/*===========================
+	Common Styles for tabs
+============================*/
+.StudyDetailsTabContent
+{
+    width: 100%;
+}
+
 /*============================
  * Series Details
  *===========================*/
@@ -366,4 +374,22 @@ div.DeleteStudiesTableContainer {
 .SeriesDetailsContent 
 {
 	background: url(../../../PersistantImage.ashx?key=ToolbarButtonPanelBackground) repeat;
+}
+
+/****
+ ViewHtml
+*****/
+.NotDiagnosticMessage
+{
+    text-align:center; 
+    font-size: 16px; 
+    font-weight: bold; 
+    padding: 3px;
+    margin: 4px;
+    color: #FF0000;
+}
+
+.NotDiagnosticPanel
+{
+    text-align:center; 
 }

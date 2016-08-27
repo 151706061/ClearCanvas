@@ -112,7 +112,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Admin.Configure.ServerPa
         /// <returns></returns>
         protected bool HasFilters()
         {
-            if (AETitleFilter.Text.Length > 0 || DescriptionFilter.Text.Length > 0 || StatusFilter.SelectedIndex > 0)
+            if (AETitleFilter.TrimText.Length > 0 || DescriptionFilter.TrimText.Length > 0 || StatusFilter.SelectedIndex > 0)
                 return true;
             else
                 return false;
@@ -151,29 +151,22 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Admin.Configure.ServerPa
             AETitleFilter.Text = string.Empty;
             DescriptionFilter.Text = string.Empty;
             StatusFilter.SelectedIndex = 0;
-            FolderFilter.Text = string.Empty;
         }
 
         protected void LoadData()
         {
             var criteria = new ServerPartitionSelectCriteria();
 
-            if (String.IsNullOrEmpty(AETitleFilter.Text) == false)
+            if (String.IsNullOrEmpty(AETitleFilter.TrimText) == false)
             {
                 QueryHelper.SetGuiStringCondition(criteria.AeTitle,
-                                   SearchHelper.TrailingWildCard(AETitleFilter.Text));
+                                   SearchHelper.TrailingWildCard(AETitleFilter.TrimText));
             }
 
-            if (String.IsNullOrEmpty(DescriptionFilter.Text) == false)
+            if (String.IsNullOrEmpty(DescriptionFilter.TrimText) == false)
             {
                 QueryHelper.SetGuiStringCondition(criteria.Description,
-                                   SearchHelper.TrailingWildCard(DescriptionFilter.Text));
-            }
-
-            if (String.IsNullOrEmpty(FolderFilter.Text) == false)
-            {
-                QueryHelper.SetGuiStringCondition(criteria.PartitionFolder,
-                                   SearchHelper.TrailingWildCard(FolderFilter.Text));
+                                   SearchHelper.TrailingWildCard(DescriptionFilter.TrimText));
             }
 
             if (StatusFilter.SelectedIndex != 0)

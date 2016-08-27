@@ -36,7 +36,6 @@ namespace ClearCanvas.Desktop
 	{
 		public ToolStripSettings()
 		{
-			ApplicationSettingsRegistry.Instance.RegisterInstance(this);
 		}
 	}
 }

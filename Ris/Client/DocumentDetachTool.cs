@@ -31,11 +31,11 @@ using ClearCanvas.Desktop.Tools;
 
 namespace ClearCanvas.Ris.Client
 {
-	[MenuAction("apply", "attached-document-items/Remove", "Apply")]
-	[ButtonAction("apply", "attached-document-items/Remove", "Apply")]
-	[IconSet("apply", IconScheme.Colour, "Icons.DeleteToolSmall.png", "Icons.DeleteToolSmall.png", "Icons.DeleteToolSmall.png")]
+	[MenuAction("apply", "attached-document-items/MenuRemove", "Apply")]
+	[ButtonAction("apply", "attached-document-items/MenuRemove", "Apply")]
+	[IconSet("apply", "Icons.DeleteToolSmall.png", "Icons.DeleteToolSmall.png", "Icons.DeleteToolSmall.png")]
 	[EnabledStateObserver("apply", "Enabled", "EnabledChanged")]
-	[VisibleStateObserver("apply", "Visible", "VisibleChanged")]
+	[VisibleStateObserver("apply", "Visible")]
 	[ExtensionOf(typeof(AttachedDocumentToolExtensionPoint))]
 	public class DocumentDetachTool : Tool<IAttachedDocumentToolContext>
 	{
@@ -52,8 +52,6 @@ namespace ClearCanvas.Ris.Client
 		{
 			get { return !this.Context.IsReadonly; }
 		}
-
-		public event EventHandler VisibleChanged;
 
 		public bool Enabled
 		{

@@ -24,13 +24,12 @@
 
 using System;
 using System.IO;
-using System.Xml;
 using ClearCanvas.Common;
 using ClearCanvas.Common.Utilities;
 using ClearCanvas.Dicom;
 using ClearCanvas.Dicom.Utilities.Command;
 using ClearCanvas.Dicom.Utilities.Xml;
-using ClearCanvas.ImageServer.Common.Command;
+using ClearCanvas.ImageServer.Enterprise.Command;
 using ClearCanvas.ImageServer.Model;
 using ClearCanvas.ImageServer.Rules;
 
@@ -71,11 +70,11 @@ namespace ClearCanvas.ImageServer.Services.Archiving.Hsm
 			{
 				using (Stream fileStream = FileStreamOpener.OpenForRead(studyXmlFile, FileMode.Open))
 				{
-					XmlDocument theDoc = new XmlDocument();
+					var theMemento = new StudyXmlMemento();
 
-					StudyXmlIo.Read(theDoc, fileStream);
+					StudyXmlIo.Read(theMemento, fileStream);
 
-					theXml.SetMemento(theDoc);
+					theXml.SetMemento(theMemento);
 
 					fileStream.Close();
 				}

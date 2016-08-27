@@ -22,6 +22,7 @@
 
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -32,7 +33,27 @@ namespace ClearCanvas.Dicom
     /// </summary>
     public class SpecificCharacterSetParser : IDicomCharacterSetParser
     {
-    	#region IDicomCharacterSetParser Members
+        private class Last
+        {
+            public Last(string specificCharacterSet, CharacterSetInfo defaultRepertoire, 
+                Dictionary<string, CharacterSetInfo> extensionRepertoires)
+            {
+                SpecificCharacterSet = specificCharacterSet;
+                DefaultRepertoire = defaultRepertoire;
+                ExtensionRepertoires = extensionRepertoires;
+            }
+
+            public readonly string SpecificCharacterSet;
+            public readonly CharacterSetInfo DefaultRepertoire;
+            public readonly Dictionary<string, CharacterSetInfo> ExtensionRepertoires;
+        }
+
+        [ThreadStatic]
+        private static Last _last;
+		[ThreadStatic]
+		private static Encoding _isomorphicEncoding;
+
+        #region IDicomCharacterSetParser Members
 
         public byte[] Encode(string dataInUnicode, string specificCharacterSet)
         {
@@ -154,7 +175,7 @@ namespace ClearCanvas.Dicom
 
         public static string GetIsomorphicString(byte[] rawBytes)
         {
-            return Encoding.GetEncoding(IsomorphicCodePage).GetString(rawBytes);
+			return IsomorphicEncoding.GetString(rawBytes);
         }
 
         public static byte[] GetIsomorphicBytes(string rawBytesEncodedAsString)
@@ -162,8 +183,8 @@ namespace ClearCanvas.Dicom
             // add a null terminator, otherwise we're going to have problems in the unamanged world
             if (rawBytesEncodedAsString == null)
                 return null;
-            else
-            return Encoding.GetEncoding(IsomorphicCodePage).GetBytes(rawBytesEncodedAsString);
+
+			return IsomorphicEncoding.GetBytes(rawBytesEncodedAsString);
         }
 
         public static Encoding GetEncoding(string specificCharacterSet)
@@ -326,6 +347,16 @@ namespace ClearCanvas.Dicom
 
         private static void GetRepertoires(string specificCharacterSet, out CharacterSetInfo defaultRepertoire, out Dictionary<string, CharacterSetInfo> extensionRepertoires)
         {
+            //Most of the time, especially on the same thread, the specific character set will be the same.
+            //This simple check avoids having to figure it out over and over again, which gets expensive.
+            var last = _last;
+            if (last != null && specificCharacterSet == last.SpecificCharacterSet)
+            {
+                defaultRepertoire = last.DefaultRepertoire;
+                extensionRepertoires = last.ExtensionRepertoires;
+                return;
+            }
+
             // TODO:
             // Specific Character Set may have up to n values if 
             // Code Extensions are used. We accomodate for that here
@@ -385,9 +416,11 @@ namespace ClearCanvas.Dicom
                     // we put in the default repertoire. Technically, it may
                     // not be ISO 2022 IR 6, but ISO_IR 6, but the information
                     // we want to use is the same
-                    extensionRepertoires.Add(value, SpecificCharacterSetParser.CharacterSetDatabase["ISO 2022 IR 6"]);
+                    extensionRepertoires.Add(value, CharacterSetDatabase["ISO 2022 IR 6"]);
                 }
             }
+
+            _last = new Last(specificCharacterSet, defaultRepertoire, extensionRepertoires);
         }
 
         /// <summary>
@@ -402,7 +435,7 @@ namespace ClearCanvas.Dicom
         {
             byte[] rawBytes;
             Encode(unicodeData, repertoire, out rawBytes);
-            char[] rawCharacters = Encoding.GetEncoding(IsomorphicCodePage).GetChars(rawBytes);
+			char[] rawCharacters = IsomorphicEncoding.GetChars(rawBytes);
             return new string(rawCharacters);
         }
 
@@ -433,7 +466,7 @@ namespace ClearCanvas.Dicom
             // get it back to byte array form using a character set that includes 
             // both GR and GL areas (characters up to \xff in binary value)
             // and it seems Windows-1252 works better than ISO-8859-1
-            byte[] rawBytes = Encoding.GetEncoding(IsomorphicCodePage).GetBytes(rawData);
+			byte[] rawBytes = IsomorphicEncoding.GetBytes(rawData);
             return Decode(rawBytes, repertoire);
         }
 
@@ -537,6 +570,11 @@ namespace ClearCanvas.Dicom
         private static Dictionary<string, CharacterSetInfo> _characterSetInfo;
         private static Dictionary<string, bool> _repertoireAppliesVRDictionary;
         #endregion
+
+	    private static Encoding IsomorphicEncoding
+	    {
+		    get { return _isomorphicEncoding ?? (_isomorphicEncoding = Encoding.GetEncoding(IsomorphicCodePage)); }
+	    }
     }
     
 }

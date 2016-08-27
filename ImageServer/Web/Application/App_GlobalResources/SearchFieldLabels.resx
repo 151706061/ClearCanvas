@@ -112,10 +112,10 @@
     <value>2.0</value>
   </resheader>
   <resheader name="reader">
-    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <resheader name="writer">
-    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="AccessionNumber" xml:space="preserve">
     <value>Accession#</value>
@@ -297,5 +297,29 @@
   </data>
   <data name="ResponsiblePerson" xml:space="preserve">
     <value>Owner</value>
+  </data>
+  <data name="ExternalRequestQueueStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="ServicePartition" xml:space="preserve">
+    <value>Partition</value>
+  </data>
+  <data name="OrderStatus" xml:space="preserve">
+    <value>Order Status</value>
+  </data>
+  <data name="QCStatus" xml:space="preserve">
+    <value>QC Status</value>
+  </data>
+  <data name="QCReportMode" xml:space="preserve">
+    <value>Report Type</value>
+  </data>
+  <data name="ScheduledFrom" xml:space="preserve">
+    <value>Scheduled From</value>
+  </data>
+  <data name="ScheduledTo" xml:space="preserve">
+    <value>Scheduled To</value>
+  </data>
+  <data name="QCExpected" xml:space="preserve">
+    <value>QC</value>
   </data>
 </root>

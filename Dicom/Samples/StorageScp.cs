@@ -146,6 +146,51 @@ namespace ClearCanvas.Dicom.Samples
             assoc.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrLittleEndian);
             assoc.AddTransferSyntax(pcid, TransferSyntax.ImplicitVrLittleEndian);
 
+			pcid = assoc.AddPresentationContext(SopClass.RtBeamsDeliveryInstructionStorage);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrLittleEndian);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ImplicitVrLittleEndian);
+
+			pcid = assoc.AddPresentationContext(SopClass.RtBeamsTreatmentRecordStorage);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrLittleEndian);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ImplicitVrLittleEndian);
+
+			pcid = assoc.AddPresentationContext(SopClass.RtBrachyTreatmentRecordStorage);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrLittleEndian);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ImplicitVrLittleEndian);
+
+			pcid = assoc.AddPresentationContext(SopClass.RtDoseStorage);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrLittleEndian);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ImplicitVrLittleEndian);
+
+			pcid = assoc.AddPresentationContext(SopClass.RtImageStorage);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrLittleEndian);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ImplicitVrLittleEndian);
+
+			pcid = assoc.AddPresentationContext(SopClass.RtIonBeamsTreatmentRecordStorage);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrLittleEndian);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ImplicitVrLittleEndian);
+
+			pcid = assoc.AddPresentationContext(SopClass.RtIonPlanStorage);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrLittleEndian);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ImplicitVrLittleEndian);
+
+			pcid = assoc.AddPresentationContext(SopClass.RtPlanStorage);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrLittleEndian);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ImplicitVrLittleEndian);
+
+			pcid = assoc.AddPresentationContext(SopClass.RtStructureSetStorage);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrLittleEndian);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ImplicitVrLittleEndian);
+
+			pcid = assoc.AddPresentationContext(SopClass.RtTreatmentSummaryRecordStorage);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrLittleEndian);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ImplicitVrLittleEndian);
+
+			pcid = assoc.AddPresentationContext(SopClass.MammographyCadSrStorage);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrLittleEndian);
+			assoc.AddTransferSyntax(pcid, TransferSyntax.ImplicitVrLittleEndian);
+
+
             pcid = assoc.AddPresentationContext(SopClass.MrImageStorage);
             SetImageTransferSyntaxes(pcid, assoc);
 
@@ -249,6 +294,9 @@ namespace ClearCanvas.Dicom.Samples
             SetImageTransferSyntaxes(pcid, assoc);
 
             pcid = assoc.AddPresentationContext(SopClass.BreastTomosynthesisImageStorage);
+            SetImageTransferSyntaxes(pcid, assoc);
+
+            pcid = assoc.AddPresentationContext(SopClass.EnhancedUsVolumeStorage);
             SetImageTransferSyntaxes(pcid, assoc);
 
         }
@@ -380,7 +428,19 @@ namespace ClearCanvas.Dicom.Samples
 			Platform.Log(LogLevel.Info, "Received association release request from  {0}.", association.CallingAE);
         }
 
-        void IDicomServerHandler.OnReceiveAbort(DicomServer server, ServerAssociationParameters association, DicomAbortSource source, DicomAbortReason reason)
+	    public void OnReceiveDimseCommand(DicomServer server, ServerAssociationParameters association, byte presentationId,
+	                                      DicomAttributeCollection command)
+	    {
+	    }
+
+	    public IDicomFilestreamHandler OnStartFilestream(DicomServer server, ServerAssociationParameters association,
+	                                                     byte presentationId, DicomMessage message)
+	    {
+			// Should not be called bcause OnReceiveDimseCommand isn't doing anything
+		    throw new NotImplementedException();
+	    }
+
+	    void IDicomServerHandler.OnReceiveAbort(DicomServer server, ServerAssociationParameters association, DicomAbortSource source, DicomAbortReason reason)
         {
 			Platform.Log(LogLevel.Error, "Unexpected association abort received.");
         }

@@ -26,6 +26,8 @@ using System;
 using System.Web;
 using ClearCanvas.Common;
 using System.Text;
+using ClearCanvas.Common.Rest;
+using ClearCanvas.ImageServer.Web.Common.Security;
 
 namespace ClearCanvas.ImageServer.Web.Common.Exceptions
 {
@@ -45,21 +47,42 @@ namespace ClearCanvas.ImageServer.Web.Common.Exceptions
             context = HttpContext.Current;
         }
 
+        
+
 		public static void ThrowException(Exception e)
 		{
 			context = HttpContext.Current;
 			Platform.Log(LogLevel.Error, e);
+			
+			// Handle cross-site script attacks.
+			// They can cause HttpRequestValidationException or HttpException with a special error message.
+			// They can also generate HttpException without any message. We  should handle all of them.
+			// We should also avoid using context.Server.Transfer() because it will end up throwing exception too.
+			// Instead, we should call Response.RedirectPermanent
+			var sb = new StringBuilder();
+			if (e is HttpRequestValidationException || (e is HttpException &&
+				(string.IsNullOrEmpty(e.Message) || e.Message.StartsWith("A potentially dangerous"))))
+			{
+				HttpContext.Current.Response.RedirectPermanent(ImageServerConstants.PageURLs.InvalidRequestErrorPage, true);
+				return;
+			}
+
+
 			if (context.Items.Contains(ImageServerConstants.ContextKeys.ErrorMessage))
 				context.Items.Remove(ImageServerConstants.ContextKeys.ErrorMessage);
 			if (context.Items.Contains(ImageServerConstants.ContextKeys.StackTrace))
 				context.Items.Remove(ImageServerConstants.ContextKeys.StackTrace);
 
-            StringBuilder sb = new StringBuilder();
-            sb.AppendLine(e.Message);
-
 			context.Items.Add(ImageServerConstants.ContextKeys.ErrorMessage, sb.ToString());
 			context.Items.Add(ImageServerConstants.ContextKeys.StackTrace, e.StackTrace);
-			context.Server.Transfer(ImageServerConstants.PageURLs.ErrorPage);
+			try
+			{
+				context.Server.Transfer(ImageServerConstants.PageURLs.ErrorPage);
+			}
+			catch (Exception ex)
+			{
+				Platform.Log(LogLevel.Error, ex);
+			}
 		}
 
     	public static void ThrowException(BaseWebException e)
@@ -70,7 +93,7 @@ namespace ClearCanvas.ImageServer.Web.Common.Exceptions
 
                 context.Server.ClearError();
 
-                string logMessage = string.Format("<Error>\n\t<CustomMessage>{0}</CustomMessage>\n\t<SystemMessage>{1}</SystemMessage>\n\t<Source>{2}</Source>\n\t<StackTrace>{3}</StackTrace>", e.LogMessage, e.Message, e.Source, e.StackTrace);
+                string logMessage = string.Format("<Error>\n\t<CustomMessage>{0}</CustomMessage>\n\t<SystemMessage>{1}</SystemMessage>\n\t<Source>{2}</Source>\n\t<StackTrace>{3}</StackTrace>\n<Error>", e.LogMessage, e.Message, e.Source, e.StackTrace);
                 Platform.Log(LogLevel.Error, logMessage);
                 
                 context.Items.Add(ImageServerConstants.ContextKeys.StackTrace, logMessage);
@@ -105,6 +128,8 @@ namespace ClearCanvas.ImageServer.Web.Common.Exceptions
                 if (e.ErrorDescription != null && !e.ErrorDescription.Equals(string.Empty))
                     context.Items.Add(ImageServerConstants.ContextKeys.ErrorDescription, e.ErrorDescription);
 
+
+                Platform.Log(LogLevel.Error, "{0} is not authorized to view {1}", SessionManager.Current.User.DisplayName, context.Request.RawUrl);
                 context.Server.Transfer(ImageServerConstants.PageURLs.AuthorizationErrorPage);
         }
 

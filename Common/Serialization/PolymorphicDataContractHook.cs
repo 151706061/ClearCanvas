@@ -24,7 +24,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using ClearCanvas.Common.Utilities;
 
 namespace ClearCanvas.Common.Serialization
@@ -32,27 +31,22 @@ namespace ClearCanvas.Common.Serialization
 	public class PolymorphicDataContractHook<T> : IJsmlSerializerHook
 		where T : PolymorphicDataContractAttribute
 	{
-		private static readonly Dictionary<string, Type> _contractMap;
-
-		static PolymorphicDataContractHook()
-		{
-			// build the contract map by finding all types having a T attribute
-			_contractMap = (from p in Platform.PluginManager.Plugins
-							from t in p.Assembly.GetTypes()
-							let a = AttributeUtils.GetAttribute<T>(t)
-							where (a != null)
-							select new { a.ContractId, Contract = t })
-				.ToDictionary(entry => entry.ContractId, entry => entry.Contract);
-		}
+// ReSharper disable StaticFieldInGenericType
+		private static readonly Dictionary<string, Type> _contractMap = PolymorphicDataContractAttribute.GetContractMap(typeof (T));
+// ReSharper restore StaticFieldInGenericType
 
 		public static void RegisterKnownType(Type type)
 		{
 			var a = AttributeUtils.GetAttribute<T>(type);
-			if(a == null)
-				throw new ArgumentException(string.Format("Specified type must be decorated with {0}", typeof(T).FullName));
+			if (a == null)
+				throw new ArgumentException(string.Format("Specified type must be decorated with {0}", typeof (T).FullName));
 			_contractMap.Add(a.ContractId, type);
 		}
 
+		public static IEnumerable<Type> DataContracts
+		{
+			get { return _contractMap.Values; }
+		}
 
 		#region IJsmlSerializerHook
 
@@ -97,5 +91,18 @@ namespace ClearCanvas.Common.Serialization
 
 			return contract;
 		}
+
+		#region
+
+#if UNIT_TESTS
+
+		internal static void ClearKnownTypes()
+		{
+			_contractMap.Clear();
+		}
+
+#endif
+
+		#endregion
 	}
 }

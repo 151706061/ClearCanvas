@@ -25,7 +25,6 @@
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using System.Threading;
 using ClearCanvas.Common;
 using ClearCanvas.Common.Utilities;
 using ClearCanvas.Dicom;
@@ -35,6 +34,8 @@ using ClearCanvas.Dicom.Network.Scp;
 using ClearCanvas.Dicom.Utilities.Xml;
 using ClearCanvas.Enterprise.Core;
 using ClearCanvas.ImageServer.Common;
+using ClearCanvas.ImageServer.Common.Helpers;
+using ClearCanvas.ImageServer.Core;
 using ClearCanvas.ImageServer.Core.Query;
 using ClearCanvas.ImageServer.Enterprise;
 using ClearCanvas.ImageServer.Model;
@@ -57,7 +58,9 @@ namespace ClearCanvas.ImageServer.Services.Dicom
 		private readonly Queue<DicomMessage> _responseQueue = new Queue<DicomMessage>(DicomSettings.Default.BufferedQueryResponses);
 		private readonly object _syncLock = new object();
         private readonly List<IExtendedQueryKeys> _queryExtensions = new List<IExtendedQueryKeys>();
- 
+	    private readonly int _bufferedQueryResponses = DicomSettings.Default.BufferedQueryResponses;
+	    private readonly int _maxQueryResponses = DicomSettings.Default.MaxQueryResponses;
+	    private readonly bool _cfindRspAlwaysInUnicode = DicomSettings.Default.CFINDRspAlwaysInUnicode;
         #endregion
 
 		#region Public Properties
@@ -121,7 +124,7 @@ namespace ClearCanvas.ImageServer.Services.Dicom
 		    {
                 var helper = new QueryAuditHelper(ServerPlatform.AuditSource,
                                               outcome, parms, msg.AffectedSopClassUid, msg.DataSet);
-                ServerPlatform.LogAuditMessage(helper);
+                ServerAuditHelper.LogAuditMessage(helper);
 		    }
 		    catch (Exception e)
 		    {
@@ -686,8 +689,8 @@ namespace ClearCanvas.ImageServer.Services.Dicom
 													throw new DicomException("DICOM C-Cancel Received");
 
                                             	resultCount++;
-												if (DicomSettings.Default.MaxQueryResponses != -1
-													&& DicomSettings.Default.MaxQueryResponses < resultCount)
+												if (_maxQueryResponses != -1
+													&& _maxQueryResponses < resultCount)
 												{
 													SendBufferedResponses(server, presentationId, message);
 													throw new DicomException("Maximum Configured Query Responses Exceeded: " + resultCount);
@@ -697,7 +700,7 @@ namespace ClearCanvas.ImageServer.Services.Dicom
 												PopulatePatient(response, tagList, row);
                                             	_responseQueue.Enqueue(response);
 
-												if (_responseQueue.Count >= DicomSettings.Default.BufferedQueryResponses)
+												if (_responseQueue.Count >= _bufferedQueryResponses)
 													SendBufferedResponses(server, presentationId, message);
                                             });
 
@@ -712,8 +715,8 @@ namespace ClearCanvas.ImageServer.Services.Dicom
 						server.SendCFindResponse(presentationId, message.MessageId, errorResponse,
 												 DicomStatuses.Cancel);
 					}
-					else if (DicomSettings.Default.MaxQueryResponses != -1 
-						  && DicomSettings.Default.MaxQueryResponses < resultCount)
+					else if (_maxQueryResponses != -1 
+						  && _maxQueryResponses < resultCount)
 					{
 						Platform.Log(LogLevel.Warn, "Maximum Configured Query Responses Exceeded: {0} on query from {1}", resultCount, server.AssociationParams.CallingAE);
 						var errorResponse = new DicomMessage();
@@ -738,7 +741,6 @@ namespace ClearCanvas.ImageServer.Services.Dicom
             var finalResponse = new DicomMessage();
             server.SendCFindResponse(presentationId, message.MessageId, finalResponse, DicomStatuses.Success);
 			AuditLog(server.AssociationParams, EventIdentificationContentsEventOutcomeIndicator.Success, message);
-        	return;
         }
 
         /// <summary>
@@ -836,8 +838,7 @@ namespace ClearCanvas.ImageServer.Services.Dicom
 														throw new DicomException("DICOM C-Cancel Received");
 
 													resultCount++;
-													if (DicomSettings.Default.MaxQueryResponses != -1
-														&& DicomSettings.Default.MaxQueryResponses < resultCount)
+													if (_maxQueryResponses != -1 && _maxQueryResponses < resultCount)
 													{
 														SendBufferedResponses(server, presentationId, message);
 														throw new DicomException("Maximum Configured Query Responses Exceeded: " + resultCount);
@@ -847,7 +848,7 @@ namespace ClearCanvas.ImageServer.Services.Dicom
                                                     PopulateStudy(subRead, response, tagList, row, "ONLINE");
 													_responseQueue.Enqueue(response);
 
-													if (_responseQueue.Count >= DicomSettings.Default.BufferedQueryResponses)
+													if (_responseQueue.Count >= _bufferedQueryResponses)
 														SendBufferedResponses(server, presentationId, message);
 											
                                                 });
@@ -864,8 +865,7 @@ namespace ClearCanvas.ImageServer.Services.Dicom
 														throw new DicomException("DICOM C-Cancel Received");
 
 													resultCount++;
-													if (DicomSettings.Default.MaxQueryResponses != -1
-														&& DicomSettings.Default.MaxQueryResponses < resultCount)
+													if (_maxQueryResponses != -1 && _maxQueryResponses < resultCount)
 													{
 														SendBufferedResponses(server, presentationId, message);
 														throw new DicomException("Maximum Configured Query Responses Exceeded: " + resultCount);
@@ -875,7 +875,7 @@ namespace ClearCanvas.ImageServer.Services.Dicom
 													PopulateStudy(subRead, response, tagList, row, "NEARLINE");
 													_responseQueue.Enqueue(response);
 
-													if (_responseQueue.Count >= DicomSettings.Default.BufferedQueryResponses)
+													if (_responseQueue.Count >= _bufferedQueryResponses)
 														SendBufferedResponses(server, presentationId, message);
 
 												});
@@ -893,8 +893,8 @@ namespace ClearCanvas.ImageServer.Services.Dicom
 						AuditLog(server.AssociationParams, EventIdentificationContentsEventOutcomeIndicator.Success, message);
         
 					}
-					else if (DicomSettings.Default.MaxQueryResponses != -1
-						  && DicomSettings.Default.MaxQueryResponses < resultCount)
+					else if (_maxQueryResponses != -1
+						  && _maxQueryResponses < resultCount)
 					{
 						Platform.Log(LogLevel.Warn, "Maximum Configured Query Responses Exceeded: {0} on query from {1}", resultCount, server.AssociationParams.CallingAE);
 						var errorResponse = new DicomMessage();
@@ -1006,8 +1006,7 @@ namespace ClearCanvas.ImageServer.Services.Dicom
 																throw new DicomException("DICOM C-Cancel Received");
 
 															resultCount++;
-															if (DicomSettings.Default.MaxQueryResponses != -1
-																&& DicomSettings.Default.MaxQueryResponses < resultCount)
+															if (_maxQueryResponses != -1 && _maxQueryResponses < resultCount)
 															{
 																SendBufferedResponses(server, presentationId, message);
 																throw new DicomException("Maximum Configured Query Responses Exceeded: " + resultCount);
@@ -1017,7 +1016,7 @@ namespace ClearCanvas.ImageServer.Services.Dicom
                                                             PopulateSeries(subRead, message, response, tagList, row);
 															_responseQueue.Enqueue(response);
 
-															if (_responseQueue.Count >= DicomSettings.Default.BufferedQueryResponses)
+															if (_responseQueue.Count >= _bufferedQueryResponses)
 																SendBufferedResponses(server, presentationId, message);
 														});
 						SendBufferedResponses(server, presentationId, message);
@@ -1033,8 +1032,7 @@ namespace ClearCanvas.ImageServer.Services.Dicom
 						AuditLog(server.AssociationParams, EventIdentificationContentsEventOutcomeIndicator.Success, message);
         
 					}
-					else if (DicomSettings.Default.MaxQueryResponses != -1
-						  && DicomSettings.Default.MaxQueryResponses < resultCount)
+					else if (_maxQueryResponses != -1 && _maxQueryResponses < resultCount)
 					{
 						Platform.Log(LogLevel.Warn, "Maximum Configured Query Responses Exceeded: {0} on query from {1}",resultCount,server.AssociationParams.CallingAE);
 
@@ -1188,8 +1186,7 @@ namespace ClearCanvas.ImageServer.Services.Dicom
                             return;
                         }
                         resultCount++;
-                        if (DicomSettings.Default.MaxQueryResponses != -1
-                            && DicomSettings.Default.MaxQueryResponses < resultCount)
+                        if (_maxQueryResponses != -1 && _maxQueryResponses < resultCount)
                         {
                             SendBufferedResponses(server, presentationId, message);
                             Platform.Log(LogLevel.Warn, "Maximum Configured Query Responses Exceeded: " + resultCount);
@@ -1200,7 +1197,7 @@ namespace ClearCanvas.ImageServer.Services.Dicom
                         PopulateInstance(message, response, tagList, theInstanceStream);
                         _responseQueue.Enqueue(response);
 
-                        if (_responseQueue.Count >= DicomSettings.Default.BufferedQueryResponses)
+                        if (_responseQueue.Count >= _bufferedQueryResponses)
                             SendBufferedResponses(server, presentationId, message);
                     }
                 }
@@ -1233,188 +1230,112 @@ namespace ClearCanvas.ImageServer.Services.Dicom
         /// Get the prefered character set for the C-FIND-RSP.
         /// </summary>
         /// <returns></returns>
-        private static string GetPreferredCharacterSet()
+        private string GetPreferredCharacterSet()
         {
             // TODO: In the future, should be device-dependent
-
-            if (DicomSettings.Default.CFINDRspAlwaysInUnicode)
+			if (_cfindRspAlwaysInUnicode)
                 return "ISO_IR 192";
-            else
-                return null;
+            return null;
         }
 
         #endregion
 
         #region IDicomScp Members
 
-        /// <summary>
-        /// Extension method called when a new DICOM Request message has been called that the 
-        /// extension will process.
-        /// </summary>
-        /// <param name="server"></param>
-        /// <param name="association"></param>
-        /// <param name="presentationId"></param>
-        /// <param name="message"></param>
-        /// <returns></returns>
-        public override bool OnReceiveRequest(DicomServer server, ServerAssociationParameters association,
-                                              byte presentationId, DicomMessage message)
-        {
-            String level = message.DataSet[DicomTags.QueryRetrieveLevel].GetString(0, string.Empty);
+	    /// <summary>
+	    /// Extension method called when a new DICOM Request message has been called that the 
+	    /// extension will process.
+	    /// </summary>
+	    /// <param name="server"></param>
+	    /// <param name="association"></param>
+	    /// <param name="presentationId"></param>
+	    /// <param name="message"></param>
+	    /// <returns></returns>
+	    public override bool OnReceiveRequest(DicomServer server, ServerAssociationParameters association,
+	                                          byte presentationId, DicomMessage message)
+	    {
+		    String level = message.DataSet[DicomTags.QueryRetrieveLevel].GetString(0, string.Empty);
 
-			if (message.CommandField == DicomCommandField.CCancelRequest)
-			{
-				Platform.Log(LogLevel.Info,"Received C-FIND-CANCEL-RQ message.");
-				CancelReceived = true;
-				return true;
-			}
+		    if (message.CommandField == DicomCommandField.CCancelRequest)
+		    {
+			    Platform.Log(LogLevel.Info, "Received C-FIND-CANCEL-RQ message.");
+			    CancelReceived = true;
+			    return true;
+		    }
 
-			CancelReceived = false;
+		    CancelReceived = false;
 
-            if (message.AffectedSopClassUid.Equals(SopClass.StudyRootQueryRetrieveInformationModelFindUid))
-            {
-                if (level.Equals("STUDY"))
-                {
-					// We use the ThreadPool to process the thread requests. This is so that we return back
-					// to the main message loop, and continue to look for cancel request messages coming
-					// in.  There's a small chance this may cause delays in responding to query requests if
-					// the .NET Thread pool fills up.
-                	ThreadPool.QueueUserWorkItem(delegate
-													{
-													    try
-													    {
-                                                            OnReceiveStudyLevelQuery(server, presentationId, message);
-													    }
-													    catch (Exception x)
-													    {
-                                                            Platform.Log(LogLevel.Error, x, "Unexpected exception in OnReceiveStudyLevelQuery.");
-													    }
-													});
-                	return true;
-                }
-            	if (level.Equals("SERIES"))
-            	{
-            		ThreadPool.QueueUserWorkItem(delegate
-            		                             	{
-                                                        try
-                                                        {
-                                                            OnReceiveSeriesLevelQuery(server, presentationId, message);
-                                                        }
-                                                        catch (Exception x)
-                                                        {
-                                                            Platform.Log(LogLevel.Error, x,
-                                                                         "Unexpected exception in OnReceiveSeriesLevelQuery.");
-                                                        }
-            		                             	});
-            		return true;
-            	}
-            	if (level.Equals("IMAGE"))
-            	{
-            	    ThreadPool.QueueUserWorkItem(delegate
-            	                                     {
-            	                                         try
-            	                                         {
-            	                                             OnReceiveImageLevelQuery(server, presentationId, message);
-            	                                         }
-            	                                         catch (Exception x)
-            	                                         {
-            	                                             Platform.Log(LogLevel.Error, x,
-            	                                                          "Unexpected exception in OnReceiveImageLevelQuery.");
-            	                                         }
-            	                                     });
-            		return true;
-            	}
-            	Platform.Log(LogLevel.Error, "Unexpected Study Root Query/Retrieve level: {0}", level);
+		    if (message.AffectedSopClassUid.Equals(SopClass.StudyRootQueryRetrieveInformationModelFindUid))
+		    {
+			    if (level.Equals("STUDY"))
+			    {
+				    // We use the ThreadPool to process the thread requests. This is so that we return back
+				    // to the main message loop, and continue to look for cancel request messages coming
+				    // in.  There's a small chance this may cause delays in responding to query requests if
+				    // the .NET Thread pool fills up.
+				    OnReceiveStudyLevelQuery(server, presentationId, message);
+				    return true;
+			    }
+			    if (level.Equals("SERIES"))
+			    {
+				    OnReceiveSeriesLevelQuery(server, presentationId, message);
+				    return true;
+			    }
+			    if (level.Equals("IMAGE"))
+			    {
+				    OnReceiveImageLevelQuery(server, presentationId, message);
+				    return true;
+			    }
+			    Platform.Log(LogLevel.Error, "Unexpected Study Root Query/Retrieve level: {0}", level);
 
-            	server.SendCFindResponse(presentationId, message.MessageId, new DicomMessage(),
-            	                         DicomStatuses.QueryRetrieveIdentifierDoesNotMatchSOPClass);
-            	return true;
-            }
-        	if (message.AffectedSopClassUid.Equals(SopClass.PatientRootQueryRetrieveInformationModelFindUid))
-        	{
-        		if (level.Equals("PATIENT"))
-        		{
-        		    ThreadPool.QueueUserWorkItem(delegate
-        		                                     {
-        		                                         try
-        		                                         {
-        		                                             OnReceivePatientQuery(server, presentationId, message);
-        		                                         }
-        		                                         catch (Exception x)
-        		                                         {
-        		                                             Platform.Log(LogLevel.Error, x,
-        		                                                          "Unexpected exception in OnReceivePatientQuery.");
-        		                                         }
-        		                                     });
+			    server.SendCFindResponse(presentationId, message.MessageId, new DicomMessage(),
+			                             DicomStatuses.QueryRetrieveIdentifierDoesNotMatchSOPClass);
+			    return true;
+		    }
+		    if (message.AffectedSopClassUid.Equals(SopClass.PatientRootQueryRetrieveInformationModelFindUid))
+		    {
+			    if (level.Equals("PATIENT"))
+			    {
+				    OnReceivePatientQuery(server, presentationId, message);
+				    return true;
+			    }
+			    if (level.Equals("STUDY"))
+			    {
+				    OnReceiveStudyLevelQuery(server, presentationId, message);
+				    return true;
+			    }
+			    if (level.Equals("SERIES"))
+			    {
+				    OnReceiveSeriesLevelQuery(server, presentationId, message);
+				    return true;
+			    }
+			    if (level.Equals("IMAGE"))
+			    {
+				    OnReceiveImageLevelQuery(server, presentationId, message);
+				    return true;
+			    }
+			    Platform.Log(LogLevel.Error, "Unexpected Patient Root Query/Retrieve level: {0}", level);
 
-        			return true;
-        		}
-        		if (level.Equals("STUDY"))
-        		{
-        		    ThreadPool.QueueUserWorkItem(delegate
-        		                                     {
-        		                                         try
-        		                                         {
-        		                                             OnReceiveStudyLevelQuery(server, presentationId, message);
-        		                                         }
-        		                                         catch (Exception x)
-        		                                         {
-        		                                             Platform.Log(LogLevel.Error, x,
-        		                                                          "Unexpected exception in OnReceiveStudyLevelQuery.");
-        		                                         }
-        		                                     });
-        			return true;
-        		}
-        		if (level.Equals("SERIES"))
-        		{
-        		    ThreadPool.QueueUserWorkItem(delegate
-        		                                     {
-        		                                         try
-        		                                         {
-        		                                             OnReceiveSeriesLevelQuery(server, presentationId, message);
-        		                                         }
-        		                                         catch (Exception x)
-        		                                         {
-        		                                             Platform.Log(LogLevel.Error, x,
-        		                                                          "Unexpected exception in OnReceiveSeriesLevelQuery.");
-        		                                         }
-        		                                     });
-        			return true;
-        		}
-        		if (level.Equals("IMAGE"))
-        		{
-        		    ThreadPool.QueueUserWorkItem(delegate
-        		                                     {
-        		                                         try
-        		                                         {
-        		                                             OnReceiveImageLevelQuery(server, presentationId, message);
-        		                                         }
-        		                                         catch (Exception x)
-        		                                         {
-        		                                             Platform.Log(LogLevel.Error, x,
-        		                                                          "Unexpected exception in OnReceiveImageLevelQuery.");
-        		                                         }
-        		                                     });
-        			return true;
-        		}
-        		Platform.Log(LogLevel.Error, "Unexpected Patient Root Query/Retrieve level: {0}", level);
+			    server.SendCFindResponse(presentationId, message.MessageId, new DicomMessage(),
+			                             DicomStatuses.QueryRetrieveIdentifierDoesNotMatchSOPClass);
+			    return true;
+		    }
 
-        		server.SendCFindResponse(presentationId, message.MessageId, new DicomMessage(),
-        		                         DicomStatuses.QueryRetrieveIdentifierDoesNotMatchSOPClass);
-        		return true;
-        	}
+		    // Not supported message type, send a failure status.
+		    server.SendCFindResponse(presentationId, message.MessageId, new DicomMessage(),
+		                             DicomStatuses.QueryRetrieveIdentifierDoesNotMatchSOPClass);
+		    return true;
+	    }
 
-        	// Not supported message type, send a failure status.
-            server.SendCFindResponse(presentationId, message.MessageId, new DicomMessage(),
-                                     DicomStatuses.QueryRetrieveIdentifierDoesNotMatchSOPClass);
-            return true;
-        }
-
-        /// <summary>
+	    /// <summary>
         /// Extension method called to get a list of the SOP Classes and transfer syntaxes supported by the extension.
         /// </summary>
         /// <returns></returns>
         public override IList<SupportedSop> GetSupportedSopClasses()
         {
+            if (!Context.AllowQuery)
+                return new List<SupportedSop>();
+
             return _list;
         }
 

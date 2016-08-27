@@ -1,10 +1,23 @@
 <%-- License
-// Copyright (c) 2011, ClearCanvas Inc.
+// Copyright (c) 2013, ClearCanvas Inc.
 // All rights reserved.
 // http://www.clearcanvas.ca
 //
-// This software is licensed under the Open Software License v3.0.
-// For the complete license, see http://www.clearcanvas.ca/OSLv3.0
+// This file is part of the ClearCanvas RIS/PACS open source project.
+//
+// The ClearCanvas RIS/PACS open source project is free software: you can
+// redistribute it and/or modify it under the terms of the GNU General Public
+// License as published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// The ClearCanvas RIS/PACS open source project is distributed in the hope that it
+// will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
+// Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along with
+// the ClearCanvas RIS/PACS open source project.  If not, see
+// <http://www.gnu.org/licenses/>.
 --%>
 <%@ Page Language="C#" AutoEventWireup="true" CodeBehind="ErrorPage.aspx.cs" MasterPageFile="ErrorPageMaster.Master" Inherits="ClearCanvas.ImageServer.Web.Application.Pages.Error.ErrorPage" %>
 <%@ Import Namespace="Resources"%>
@@ -13,17 +26,15 @@
 
 <asp:Content runat="server" ContentPlaceHolderID="ErrorMessagePlaceHolder">
 	    <asp:label ID="ErrorMessageLabel" runat="server">
-	        <%= ErrorMessages.UnexpectedError %>
 	    </asp:label>
 </asp:Content>
 
 <asp:Content ID="Content1" runat="server" ContentPlaceHolderID="DescriptionPlaceHolder">
    <asp:Label ID = "DescriptionLabel" runat="server">
-        <%= ClearCanvas.ImageServer.Web.Common.Utilities.HtmlUtility.Encode(ErrorMessages.GeneralErrorMessage)%>
-        <div ID="StackTraceMessage" runat="server" Visible="false" onclick="javascript:toggleLayer('StackTrace');" style="margin-top:20px">
+    </asp:Label>
+    <div ID="StackTraceMessage" runat="server" Visible="false" onclick="javascript:toggleLayer('StackTrace');" style="margin-top:20px">
                 <%= ClearCanvas.ImageServer.Web.Common.Utilities.HtmlUtility.Encode(ErrorMessages.ErrorShowStackTraceMessage)%>
         </div>
-    </asp:Label>
     <div id="StackTrace" style="margin-top: 15px" visible="false">
         <asp:TextBox runat="server" ID="StackTraceTextBox" Visible="false" Rows="5" Width="90%" TextMode="MultiLine" ReadOnly="true"></asp:TextBox>
     </div>

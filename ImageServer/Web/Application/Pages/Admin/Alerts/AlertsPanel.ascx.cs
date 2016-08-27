@@ -36,7 +36,7 @@ using ClearCanvas.ImageServer.Web.Application.Helpers;
 using ClearCanvas.ImageServer.Web.Common.Data;
 using ClearCanvas.ImageServer.Web.Common.Data.DataSource;
 using ClearCanvas.ImageServer.Web.Common.WebControls.UI;
-using AuthorityTokens=ClearCanvas.ImageServer.Enterprise.Authentication.AuthorityTokens;
+using AuthorityTokens=ClearCanvas.ImageServer.Common.Authentication.AuthorityTokens;
 using SR = Resources.SR;
 using Resources;
 
@@ -132,7 +132,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Admin.Alerts
         /// <returns></returns>
         protected bool HasFilters()
         {
-            if (ComponentFilter.Text.Length > 0 || InsertDateFilter.Text.Length > 0 || LevelFilter.SelectedIndex > 0 || CategoryFilter.SelectedIndex > 0)
+            if (ComponentFilter.TrimText.Length > 0 || InsertDateFilter.Text.Length > 0 || LevelFilter.SelectedIndex > 0 || CategoryFilter.SelectedIndex > 0)
                 return true;
             else
                 return false;
@@ -177,8 +177,8 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Admin.Alerts
         {
             AlertsGridPanel.DataSourceCreated += delegate(AlertDataSource source)
                             {
-                                if (!String.IsNullOrEmpty(ComponentFilter.Text))
-                                    source.Component = SearchHelper.LeadingAndTrailingWildCard(ComponentFilter.Text);
+                                if (!String.IsNullOrEmpty(ComponentFilter.TrimText))
+                                    source.Component = SearchHelper.LeadingAndTrailingWildCard(ComponentFilter.TrimText);
                                 if (LevelFilter.SelectedIndex > 0)
                                     source.Level = AlertLevelEnum.GetEnum(LevelFilter.SelectedValue);
                                 if (CategoryFilter.SelectedIndex > 0)

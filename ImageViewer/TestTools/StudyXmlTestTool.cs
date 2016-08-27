@@ -23,6 +23,7 @@
 #endregion
 
 using System;
+using System.IO;
 using System.Xml;
 using ClearCanvas.Common.Utilities;
 using ClearCanvas.ImageViewer.Explorer.Dicom;
@@ -73,7 +74,7 @@ namespace ClearCanvas.ImageViewer.TestTools
 
 				var selected = base.Context.SelectedStudy;
 
-				loader.Start(new StudyLoaderArgs(selected.StudyInstanceUid, selected.Server));
+				loader.Start(new StudyLoaderArgs(selected.StudyInstanceUid, selected.Server, null));
 				StudyXml xml = new StudyXml();
 				Sop sop;
 				
@@ -88,14 +89,11 @@ namespace ClearCanvas.ImageViewer.TestTools
 				settings.MaxTagLength = 100 * 1024;
 				settings.IncludeSourceFileName = true;
 
-				XmlDocument doc = xml.GetMemento(settings);
+				var memento = xml.GetMemento(settings);
 				string fileName = System.IO.Path.Combine(result.FileName, "studyxml.xml");
 
-				XmlTextWriter writer = new XmlTextWriter(fileName, Encoding.UTF8);
-				writer.Formatting = Formatting.Indented;
-				writer.Indentation = 5;
-				
-				doc.Save(writer);
+				TextWriter writer = new StreamWriter(fileName, false, Encoding.UTF8);
+				memento.Save(writer);
 			}
 		}
 	}

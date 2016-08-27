@@ -2,15 +2,11 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build" ToolsVersion="4.0">
   <PropertyGroup>
     <ProjectType>Local</ProjectType>
-    <ProductVersion>9.0.30729</ProductVersion>
-    <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{AD9ECE2B-8268-4115-8DC8-860FBD011FFF}</ProjectGuid>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ApplicationIcon />
     <AssemblyKeyContainerName />
     <AssemblyName>ClearCanvas.Dicom</AssemblyName>
-    <AssemblyOriginatorKeyFile />
     <DefaultClientScript>JScript</DefaultClientScript>
     <DefaultHTMLPageLayout>Grid</DefaultHTMLPageLayout>
     <DefaultTargetSchema>IE50</DefaultTargetSchema>
@@ -18,7 +14,6 @@
     <OutputType>Library</OutputType>
     <RootNamespace>ClearCanvas.Dicom</RootNamespace>
     <RunPostBuildEvent>OnOutputUpdated</RunPostBuildEvent>
-    <StartupObject />
     <FileUpgradeFlags>
     </FileUpgradeFlags>
     <UpgradeBackupLocation />
@@ -40,24 +35,20 @@
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
     <TargetFrameworkProfile />
+    <FileAlignment>512</FileAlignment>
+    <UseMSBuildEngine>False</UseMSBuildEngine>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <OutputPath>bin\Debug\</OutputPath>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <BaseAddress>285212672</BaseAddress>
-    <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
-    <ConfigurationOverrideFile />
+    <ConfigurationOverrideFile>
+    </ConfigurationOverrideFile>
     <DefineConstants>TRACE;DEBUG;UNIT_TESTS</DefineConstants>
-    <DocumentationFile>
-    </DocumentationFile>
     <DebugSymbols>true</DebugSymbols>
-    <FileAlignment>4096</FileAlignment>
-    <NoStdLib>false</NoStdLib>
     <NoWarn>1591, 0419, 1574, 1587</NoWarn>
     <Optimize>false</Optimize>
     <RegisterForComInterop>false</RegisterForComInterop>
     <RemoveIntegerChecks>false</RemoveIntegerChecks>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <WarningLevel>4</WarningLevel>
     <DebugType>full</DebugType>
     <ErrorReport>prompt</ErrorReport>
@@ -67,61 +58,52 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release\</OutputPath>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <BaseAddress>285212672</BaseAddress>
-    <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
-    <ConfigurationOverrideFile />
+    <ConfigurationOverrideFile>
+    </ConfigurationOverrideFile>
     <DefineConstants>TRACE</DefineConstants>
-    <DocumentationFile>
-    </DocumentationFile>
     <DebugSymbols>true</DebugSymbols>
-    <FileAlignment>4096</FileAlignment>
-    <NoStdLib>false</NoStdLib>
     <NoWarn>1591, 0419, 1574, 1587</NoWarn>
     <Optimize>true</Optimize>
     <RegisterForComInterop>false</RegisterForComInterop>
     <RemoveIntegerChecks>false</RemoveIntegerChecks>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <WarningLevel>4</WarningLevel>
     <DebugType>pdbonly</DebugType>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="nunit.framework, Version=2.2.7.0, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\ReferencedAssemblies\nunit.framework.dll</HintPath>
-    </Reference>
     <Reference Include="sysglobl" />
     <Reference Include="System" />
-    <Reference Include="System.configuration" />
-    <Reference Include="System.Core">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
+    <Reference Include="System.Core" />
     <Reference Include="System.Data">
       <Name>System.Data</Name>
     </Reference>
     <Reference Include="System.Drawing" />
-    <Reference Include="System.Runtime.Serialization, Version=3.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\WINDOWS\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\System.Runtime.Serialization.dll</HintPath>
-    </Reference>
-    <Reference Include="System.ServiceModel, Version=3.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\WINDOWS\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\System.ServiceModel.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Transactions" />
     <Reference Include="System.Web" />
     <Reference Include="System.Xml">
       <Name>System.XML</Name>
+    </Reference>
+    <Reference Include="nunit.framework">
+      <HintPath>..\ReferencedAssemblies\nunit.framework.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Runtime.Serialization">
+      <HintPath>..\..\..\WINDOWS\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\System.Runtime.Serialization.dll</HintPath>
+    </Reference>
+    <Reference Include="System.ServiceModel">
+      <HintPath>..\..\..\WINDOWS\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\System.ServiceModel.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
     <Compile Include="Audit\AuditedInstances.cs" />
     <Compile Include="Audit\AuditLogHelper.cs" />
+    <Compile Include="Audit\HealthcareDataAuditHelper.cs" />
     <Compile Include="Audit\EventReceiptAction.cs" />
     <Compile Include="Audit\EventResult.cs" />
     <Compile Include="Audit\EventSource.cs" />
+    <Compile Include="Codec\Tests\GZipDicomCodec.cs" />
+    <Compile Include="Codec\Tests\NullDicomCodec.cs" />
     <Compile Include="DicomAttribute.cs" />
     <Compile Include="DicomAttributeBinaryData.cs">
       <SubType>Code</SubType>
@@ -135,24 +117,208 @@
     <Compile Include="DicomUncompressedPixelData.cs" />
     <Compile Include="FileReference.cs" />
     <Compile Include="Iod\ComponentGroup.cs" />
+    <Compile Include="Iod\ContextGroups\ImageDrivationContextGroup.cs" />
+    <Compile Include="Iod\ContextGroups\SourceImagePurposesOfReferenceContextGroup.cs" />
+    <Compile Include="Iod\CorrectedImage.cs" />
+    <Compile Include="Iod\CountsSource.cs" />
+    <Compile Include="Iod\DecayCorrection.cs" />
+    <Compile Include="Iod\Extensions\XKeyObjectDocumentModuleIod.cs" />
+    <Compile Include="Iod\FunctionalGroupDescriptor.cs" />
+    <Compile Include="Iod\FunctionalGroupMacro.cs" />
+    <Compile Include="Iod\FunctionalGroupMapCache.cs" />
+    <Compile Include="Iod\FunctionalGroups\CardiacSynchronizationFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\ContrastBolusUsageFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\CtAcquisitionDetailsFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\CtAcquisitionTypeFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\CtAdditionalXRaySourceFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\CtExposureFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\CtGeometryFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\CtImageFrameTypeFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\CtPixelValueTransformationFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\CtPositionFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\CtReconstructionFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\CtTableDynamicsFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\CtXRayDetailsFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\DerivationImageFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\FrameAnatomyFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\FrameContentFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\FrameDisplayShutterFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\FramePixelShiftFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\FrameVoiLutFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\FrameVoiLutWithLutFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\IdentityPixelValueTransformationFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\ImageDataTypeFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\IntravascularFrameContentFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\IntravascularOctFrameContentFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\IntravascularOctFrameTypeFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\IrradiationEventIdentificationFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\MrAerterialSpinLabelingFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\MrAveragesFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\MrDiffusionFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\MrEchoFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\MrFovGeometryFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\MrImageFrameTypeFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\MrImagingModifierFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\MrMetaboliteMapFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\MrModifierFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\MrReceiveCoilFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\MrSpatialSaturationFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\MrSpectroscopyFovGeometryFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\MrSpectroscopyFrameTypeFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\MrTimingAndRelatedParametersFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\MrTransmitCoilFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\MrVelocityEncodingFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\OphthalmicFrameLocationFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\OpticalPathIdentificationFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PatientOrientationInFrameFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PatientPhysiologicalStateFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PetDetectorMotionDetailsFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PetFrameAcquisitionFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PetFrameCorrectionFactorsFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PetFrameTypeFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PetPositionFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PetReconstructionFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PetTableDynamicsFunctionGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PixelIntensityRelationshipLutFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PixelMeasuresFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PixelValueTransformationFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PlaneOrientationPatientFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PlaneOrientationVolumeFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PlanePositionPatientFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PlanePositionSlideFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\PlanePositionVolumeFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\RadiopharmaceuticalUsageFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\RealWorldValueMappingFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\ReferencedImageFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\RespiratorySynchronizationFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\SegmentationFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\SpecimentReferenceFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\TemporalPositionFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\UsImageDescriptionFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\XaXrfFrameCharacteristicsFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\XaXrfFramePixelDataPropertiesFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\XRay3DFrameTypeFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\XRayCalibrationDeviceUsageFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\XRayCollimatorFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\XRayExposureControlSensingRegionsFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\XRayFieldOfViewFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\XRayFrameAcquisitionFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\XRayFrameDetectorParametersFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\XRayGeometryFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\XRayIsocenterReferenceSystemFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\XRayObjectThicknessFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\XRayPositionerFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\XRayProjectionPixelCalibrationFunctionalGroup.cs" />
+    <Compile Include="Iod\FunctionalGroups\XRayTablePositionFunctionalGroup.cs" />
+    <Compile Include="Iod\GradientDirection.cs" />
+    <Compile Include="Iod\Iods\RawDataIod.cs" />
+    <Compile Include="Iod\Iods\ScImageIod.cs" />
+    <Compile Include="Iod\ISeries.cs" />
+    <Compile Include="Iod\ISeriesCollection.cs" />
+    <Compile Include="Iod\ISopInstance.cs" />
+    <Compile Include="Iod\ISopInstanceCollection.cs" />
+    <Compile Include="Iod\Macros\CommonCtMrImageDescriptionMacro.cs" />
+    <Compile Include="Iod\Macros\ExposureIndexMacro.cs" />
+    <Compile Include="Iod\Macros\XRay3DGeneralPerProjectionAcquisitionMacro.cs" />
+    <Compile Include="Iod\Macros\XRay3DGeneralPositionerMovementMacro.cs" />
+    <Compile Include="Iod\Macros\XRay3DGeneralSharedAcquisitionMacro.cs" />
+    <Compile Include="Iod\Macros\XRayCollimatorDimensionsMacro.cs" />
+    <Compile Include="Iod\Macros\XRayGridDescriptionMacro.cs" />
+    <Compile Include="Iod\Modules\AcquisitionContextModuleIod.cs" />
+    <Compile Include="Iod\Modules\BreastTomosynthesisAcquisitionModule.cs" />
+    <Compile Include="Iod\Modules\CrSeriesModuleIod.cs" />
+    <Compile Include="Iod\Modules\CtSeriesModuleIod.cs" />
+    <Compile Include="Iod\Modules\DeviceModuleIod.cs" />
+    <Compile Include="Iod\Modules\EnhancedMammographySeriesModuleIod.cs" />
+    <Compile Include="Iod\Modules\EnhancedPetSeriesModuleIod.cs" />
+    <Compile Include="Iod\Modules\EnhancedSeriesModuleIod.cs" />
+    <Compile Include="Iod\Modules\EnhancedUsSeriesModuleIod.cs" />
+    <Compile Include="Iod\Modules\FrameOfReferenceModuleIod.cs" />
+    <Compile Include="Iod\Modules\MrSeriesModuleIod.cs" />
+    <Compile Include="Iod\Modules\MultiFrameDimensionModule.cs" />
+    <Compile Include="Iod\Modules\MultiFrameFunctionalGroupsModule.cs" />
+    <Compile Include="Iod\Modules\MultiFrameModuleIod.cs" />
+    <Compile Include="Iod\Modules\NmPetPatientOrientationModuleIod.cs" />
+    <Compile Include="Iod\Modules\OpthalmicTomographySeriesModuleIod.cs" />
+    <Compile Include="Iod\Modules\PetIsotopeModuleIod.cs" />
+    <Compile Include="Iod\Modules\PetMultiGatedAcquisitionModuleIod.cs" />
+    <Compile Include="Iod\Modules\PetSeriesModuleIod.cs" />
+    <Compile Include="Iod\Modules\RawDataModule.cs" />
+    <Compile Include="Iod\Modules\ScImageModuleIod.cs" />
+    <Compile Include="Iod\Modules\ScMultiFrameImageModuleIod.cs" />
     <Compile Include="Iod\Modules\Tests\FilmSizeTests.cs" />
     <Compile Include="Iod\Modules\Tests\PrintScuTests.cs" />
+    <Compile Include="Iod\Modules\VoiLutModuleIod.cs" />
+    <Compile Include="Iod\Modules\XaXrfSeriesModuleIod.cs" />
+    <Compile Include="Iod\Modules\XRay3DAcquisitionModule.cs" />
+    <Compile Include="Iod\Modules\XRay3DReconstructionModule.cs" />
+    <Compile Include="Iod\RandomsCorrectionMethod.cs" />
+    <Compile Include="Iod\Sequences\AcquisitionContextSequence.cs" />
+    <Compile Include="Iod\Sequences\AnatomicRegionSequenceItem.cs" />
+    <Compile Include="Iod\Sequences\DeviceSequenceItem.cs" />
+    <Compile Include="Iod\Sequences\FunctionalGroupsSequenceItem.cs" />
+    <Compile Include="Iod\Sequences\IconImageSequence.cs" />
+    <Compile Include="Iod\Sequences\OriginalAttributesSequence.cs" />
+    <Compile Include="Iod\Sequences\PatientOrientationCodeSequence.cs" />
+    <Compile Include="Iod\Sequences\PrimaryAnatomicStructureSequenceItem.cs" />
+    <Compile Include="Iod\Sequences\ReferencedImageSequence.cs" />
+    <Compile Include="Iod\Sequences\SourceImageSequence.cs" />
+    <Compile Include="Iod\SuvType.cs" />
+    <Compile Include="Iod\Tests\EncapsulatedPdfIodTests.cs" />
+    <Compile Include="Iod\Tests\EqualityCompareHelper.cs" />
+    <Compile Include="Iod\Tests\FunctionalGroupMacroTests.cs" />
+    <Compile Include="Iod\Tests\HierarchicalSopInstanceReferenceDictionaryTests.cs" />
+    <Compile Include="Iod\Tests\WindowTests.cs" />
+    <Compile Include="Iod\Units.cs" />
+    <Compile Include="IO\DicomStreamOpener.cs" />
     <Compile Include="IO\IByteBuffer.cs" />
+    <Compile Include="IO\StreamMethods.cs" />
     <Compile Include="IO\Tests\ByteBufferHighCapacityTests.cs" />
     <Compile Include="IO\Tests\ByteBufferPerformanceTest.cs" />
     <Compile Include="IO\Tests\ByteBufferTests.cs" />
     <Compile Include="IO\Tests\LegacyByteBuffer.cs" />
     <Compile Include="IO\Tests\TestByteBuffer.cs" />
+    <Compile Include="IReadOnlyDicomAttribute.cs" />
+    <Compile Include="IReadOnlyDicomSequenceItem.cs" />
     <Compile Include="Network\SR.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>SR.resx</DependentUpon>
     </Compile>
+    <Compile Include="ServiceModel\Editing\EditContractJsmlSerializerHook.cs" />
+    <Compile Include="ServiceModel\Editing\EditSet.cs" />
+    <Compile Include="ServiceModel\Editing\PixelDataEdit.cs" />
+    <Compile Include="ServiceModel\Editing\TypeHelper.cs" />
+    <Compile Include="ServiceModel\Editing\Condition.cs" />
+    <Compile Include="ServiceModel\Editing\Edit.cs" />
+    <Compile Include="ServiceModel\Editing\Namespace.cs" />
+    <Compile Include="ServiceModel\Query\IStudyRootQueryApplication.cs" />
+    <Compile Include="ServiceModel\Query\IStudyRootRetrieve.cs" />
+    <Compile Include="ServiceModel\Query\DicomStudyRootQueryApplication.cs" />
+    <Compile Include="ServiceModel\SR.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>SR.resx</DependentUpon>
+    </Compile>
+    <Compile Include="ServiceModel\Streaming\DicomImportServiceClient.cs" />
     <Compile Include="ServiceModel\Streaming\HeaderStreamingServiceClient.cs" />
+    <Compile Include="ServiceModel\Streaming\IDicomImportService.cs" />
+    <Compile Include="ServiceModel\Verification\FaultContracts.cs" />
+    <Compile Include="ServiceModel\Verification\IVerifyApplication.cs" />
+    <Compile Include="ServiceModel\Verification\VerifyApplication.cs" />
+    <Compile Include="Tests\ChangeTransferSyntaxTests.cs" />
+    <Compile Include="Tests\DicomUidTests.cs" />
+    <Compile Include="Tests\IconImageSequenceTests.cs" />
+    <Compile Include="Tests\SequenceTests.cs" />
+    <Compile Include="Tests\SopClassTests.cs" />
     <Compile Include="Tests\DicomAttributeBinaryDataTests.cs" />
+    <Compile Include="Tests\DicomImageTestHelper.cs" />
     <Compile Include="Tests\DicomUncompressedPixelDataTests.cs" />
+    <Compile Include="IO\Tests\StreamWriterTest.cs" />
+    <Compile Include="Tests\TransferSyntaxTests.cs" />
     <Compile Include="Utilities\Command\AggregateCommand.cs" />
     <Compile Include="Utilities\Command\RemoveSeriesFromStudyXml.cs" />
+    <Compile Include="Utilities\Command\RemoveSopInstanceFromStudyXmlCommand.cs" />
     <Compile Include="Utilities\Command\Tests\CommandTests.cs" />
     <Compile Include="Utilities\DateParser.cs" />
     <Compile Include="Utilities\DateRangeHelper.cs" />
@@ -183,6 +349,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Iod\PersonName.cs" />
     <Compile Include="SopClass.cs" />
+    <Compile Include="SopClasses.cs" />
     <Compile Include="SpecificCharacterSetParser.cs" />
     <Compile Include="SR.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -191,9 +358,19 @@
     </Compile>
     <Compile Include="Tests\DateTimeTests.cs" />
     <Compile Include="Iod\Tests\ImageOrientationPatientTests.cs" />
+    <Compile Include="Iod\IStudy.cs" />
+    <Compile Include="Utilities\PdfStreamHelper.cs" />
+    <Compile Include="Utilities\Rules\Tests\DicomExpressionTests.cs" />
     <Compile Include="Utilities\SopInstanceFactory.cs" />
+    <Compile Include="Utilities\Tests\DateTimeParserTests.cs" />
+    <Compile Include="Utilities\Tests\DicomStringHelperTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Utilities\Tests\PdfStreamHelperTests.cs" />
+    <Compile Include="Utilities\Tests\PdfTestSamples.cs" />
     <Compile Include="Utilities\TimeParser.cs" />
     <Compile Include="TransferSyntax.cs" />
+    <Compile Include="TransferSyntaxes.cs" />
     <Compile Include="Iod\Window.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -207,6 +384,10 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>SR.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ServiceModel\SR.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>SR.Designer.cs</LastGenOutput>
     </EmbeddedResource>
     <EmbeddedResource Include="SR.resx">
       <SubType>Designer</SubType>
@@ -525,6 +706,10 @@
     <Compile Include="Utilities\StudyBuilder\StudyNodeCollection.cs" />
     <Compile Include="Utilities\Tests\DicomTagPathTests.cs" />
     <Compile Include="Utilities\Xml\InstanceXmlDicomAttributeCollection.cs" />
+    <Compile Include="Utilities\Xml\StudyXmlMemento.cs" />
+    <Compile Include="Utilities\Xml\Study\Series.cs" />
+    <Compile Include="Utilities\Xml\Study\SopInstance.cs" />
+    <Compile Include="Utilities\Xml\Study\Study.cs" />
     <Compile Include="Utilities\Xml\Tests\InstanceXmlTests.cs" />
     <Compile Include="Utilities\Xml\Tests\StudyXmlTests.cs" />
     <Compile Include="Validation\DicomValidator.cs" />
@@ -544,7 +729,7 @@
     <Compile Include="Tests\AssociationTests.cs" />
     <Compile Include="Tests\AttributeTests.cs" />
     <Compile Include="Tests\DicomFieldTests.cs" />
-    <Compile Include="Tests\FileTest.cs" />
+    <Compile Include="Tests\DicomFileTests.cs" />
     <Compile Include="Utilities\Anonymization\DicomAnonymizer.cs" />
     <Compile Include="Utilities\Anonymization\DicomAnonymizerTags.cs" />
     <Compile Include="Utilities\Anonymization\SeriesData.cs" />
@@ -553,7 +738,6 @@
     <Compile Include="Utilities\DicomStringHelper.cs" />
     <Compile Include="Utilities\Statistics\AssociationStatisticsRecorder.cs" />
     <Compile Include="Utilities\Statistics\TransmissionStatistics.cs" />
-    <Compile Include="Utilities\Tests\DicomStringHelperTests.cs" />
     <Compile Include="Utilities\Xml\BaseInstanceXml.cs" />
     <Compile Include="Utilities\Xml\InstanceXml.cs" />
     <Compile Include="Utilities\Xml\SeriesXml.cs" />
@@ -564,7 +748,9 @@
     <Compile Include="Validation\StringValueValidation.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="app.config" />
+    <None Include="app.config">
+      <SubType>Designer</SubType>
+    </None>
     <EmbeddedResource Include="Audit\DicomAuditMessageSchema.xsd">
       <SubType>
       </SubType>

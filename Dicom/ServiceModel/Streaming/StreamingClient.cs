@@ -23,14 +23,13 @@
 #endregion
 
 using System;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Text;
 using System.Web;
 using ClearCanvas.Common;
 using ClearCanvas.Common.Utilities;
-using System.Diagnostics;
-using System.Net.Cache;
 
 namespace ClearCanvas.Dicom.ServiceModel.Streaming
 {
@@ -57,14 +56,21 @@ namespace ClearCanvas.Dicom.ServiceModel.Streaming
 			get { return _metaData; }	
 		}
 
+		[Obsolete("Use the version with the out (photometricInterpretation) parameter.")]
 		public byte[] GetPixelData()
 		{
+			string photometricInterpretation;
+			return GetPixelData(out photometricInterpretation);
+		}
+
+		public byte[] GetPixelData(out string photometricInterpretation)
+		{
+			photometricInterpretation = null;
 			if (_compressedPixelData != null)
 			{
 				try
 				{
-					byte[] uncompressed = _compressedPixelData.GetFrame(0);
-
+					byte[] uncompressed = _compressedPixelData.GetFrame(0, out photometricInterpretation);
 					_pixelData = uncompressed;
 					_compressedPixelData = null;
 				}
@@ -152,7 +158,7 @@ namespace ClearCanvas.Dicom.ServiceModel.Streaming
 
 				clock.Stop();
 				PerformanceReportBroker.PublishReport("Streaming", "RetrievePixelData", clock.Seconds);
-
+				Platform.Log(LogLevel.Debug, "Client streaming time: {0} seconds", clock.Seconds);
 				RetrievePixelDataResult pixelDataResult;
 				if (response.Headers["Compressed"] != null && bool.Parse(response.Headers["Compressed"]))
 					pixelDataResult = new RetrievePixelDataResult(CreateCompressedPixelData(response, buffer), result);
@@ -282,29 +288,29 @@ namespace ClearCanvas.Dicom.ServiceModel.Streaming
 		{
 			string transferSyntaxUid = response.Headers["TransferSyntaxUid"];
 			TransferSyntax transferSyntax = TransferSyntax.GetTransferSyntax(transferSyntaxUid);
-			ushort bitsAllocated = ushort.Parse(response.Headers["BitsAllocated"]);
-			ushort bitsStored = ushort.Parse(response.Headers["BitsStored"]);
-			ushort height = ushort.Parse(response.Headers["ImageHeight"]);
-			ushort width = ushort.Parse(response.Headers["ImageWidth"]);
-			ushort samples = ushort.Parse(response.Headers["SamplesPerPixel"]);
+			ushort bitsAllocated = ushort.Parse(response.Headers["BitsAllocated"], CultureInfo.InvariantCulture);
+			ushort bitsStored = ushort.Parse(response.Headers["BitsStored"], CultureInfo.InvariantCulture);
+			ushort height = ushort.Parse(response.Headers["ImageHeight"], CultureInfo.InvariantCulture);
+			ushort width = ushort.Parse(response.Headers["ImageWidth"], CultureInfo.InvariantCulture);
+			ushort samples = ushort.Parse(response.Headers["SamplesPerPixel"], CultureInfo.InvariantCulture);
 
 			DicomAttributeCollection collection = new DicomAttributeCollection();
 			collection[DicomTags.BitsAllocated].SetUInt16(0, bitsAllocated);
 			collection[DicomTags.BitsStored].SetUInt16(0, bitsStored);
-			collection[DicomTags.HighBit].SetUInt16(0, ushort.Parse(response.Headers["HighBit"]));
+			collection[DicomTags.HighBit].SetUInt16(0, ushort.Parse(response.Headers["HighBit"], CultureInfo.InvariantCulture));
 			collection[DicomTags.Rows].SetUInt16(0, height);
 			collection[DicomTags.Columns].SetUInt16(0, width);
 			collection[DicomTags.PhotometricInterpretation].SetStringValue(response.Headers["PhotometricInterpretation"]);
-			collection[DicomTags.PixelRepresentation].SetUInt16(0, ushort.Parse(response.Headers["PixelRepresentation"]));
+			collection[DicomTags.PixelRepresentation].SetUInt16(0, ushort.Parse(response.Headers["PixelRepresentation"], CultureInfo.InvariantCulture));
 			collection[DicomTags.SamplesPerPixel].SetUInt16(0, samples);
 			collection[DicomTags.DerivationDescription].SetStringValue(response.Headers["DerivationDescription"]);
 			collection[DicomTags.LossyImageCompression].SetStringValue(response.Headers["LossyImageCompression"]);
 			collection[DicomTags.LossyImageCompressionMethod].SetStringValue(response.Headers["LossyImageCompressionMethod"]);
-			collection[DicomTags.LossyImageCompressionRatio].SetFloat32(0, float.Parse(response.Headers["LossyImageCompressionRatio"]));
+			collection[DicomTags.LossyImageCompressionRatio].SetFloat32(0, float.Parse(response.Headers["LossyImageCompressionRatio"], CultureInfo.InvariantCulture));
 			collection[DicomTags.PixelData] = new DicomFragmentSequence(DicomTags.PixelData);
 
 			ushort planar;
-			if (ushort.TryParse(response.Headers["PlanarConfiguration"], out planar))
+			if (ushort.TryParse(response.Headers["PlanarConfiguration"], NumberStyles.Integer, CultureInfo.InvariantCulture, out planar))
 				collection[DicomTags.PlanarConfiguration].SetUInt16(0, planar);
 
 			DicomCompressedPixelData cpd = new DicomCompressedPixelData(collection);

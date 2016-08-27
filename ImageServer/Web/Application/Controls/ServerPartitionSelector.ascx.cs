@@ -67,6 +67,8 @@ namespace ClearCanvas.ImageServer.Web.Application.Controls
             }
         }
 
+		public bool UseNonResearchPartitions { get; set; }
+
         public ServerPartition SelectedPartition
         {
             get
@@ -80,10 +82,17 @@ namespace ClearCanvas.ImageServer.Web.Application.Controls
                     else
                     {
                         string aeTitle = Request["AETitle"];
+                        var partitionKey = Request["PartitionKey"];
 
                         if (aeTitle != null)
                         {
                             _selectedPartition = ServerPartitionList.SingleOrDefault(p => p.AeTitle == aeTitle);
+                        }
+
+                        if (_selectedPartition == null && partitionKey != null)
+                        {
+                            var partitionEntityKey = new Guid(partitionKey);
+                            _selectedPartition = ServerPartitionList.SingleOrDefault(p => p.Key.Key.Equals(partitionEntityKey));
                         }
                     }
 
@@ -131,6 +140,11 @@ namespace ClearCanvas.ImageServer.Web.Application.Controls
                 return ViewState["SelectedPartitionKey"] as ServerEntityKey;
             }
         }
+
+		public ServerPartitionSelector()
+		{
+			UseNonResearchPartitions = false;
+		}
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -233,12 +247,13 @@ namespace ClearCanvas.ImageServer.Web.Application.Controls
 
                 if (extension != null)
                 {
+					if (UseNonResearchPartitions)
+						return new List<ServerPartition>(extension.LoadNonResearchServerPartitions());
                     return new List<ServerPartition>(extension.LoadServerPartitions());
                 }
             }
             catch (Exception)
             {
-
             }
 
             var defaultImpl = new DefaultServerPartitionTabsExtension();

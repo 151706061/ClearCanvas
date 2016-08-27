@@ -52,7 +52,7 @@ namespace ClearCanvas.Enterprise.Core.ServiceModel
 		private ServiceCredentials _serviceCredentials = new DefaultServiceCredentials();
 		private bool _sendExceptionDetailToClient;
 		private bool _enablePerformanceLogging;
-		private int _maxReceivedMessageSize = 1000000;
+		private long _maxReceivedMessageSize = 1000000;
 		private InstanceContextMode _instanceMode = InstanceContextMode.PerCall;
 		private CertificateSearchDirective _certificateSearchDirective;
 
@@ -140,11 +140,17 @@ namespace ClearCanvas.Enterprise.Core.ServiceModel
 		/// <remarks>
 		/// Must be set prior to calling <see cref="AddServices"/>.
 		/// </remarks>
-		public int MaxReceivedMessageSize
+		public long MaxReceivedMessageSize
 		{
 			get { return _maxReceivedMessageSize; }
 			set { _maxReceivedMessageSize = value; }
 		}
+
+		/// <summary>
+		/// The time, in seconds, in which a send operation must complete.
+		/// </summary>
+		/// <remarks>Value less than or equal to zero should be ignored.</remarks>
+		public int SendTimeoutSeconds { get; set; }
 
 		/// <summary>
 		/// Gets or sets a value indicating whether performance logging is enabled.
@@ -271,7 +277,10 @@ namespace ClearCanvas.Enterprise.Core.ServiceModel
 			// add exception promotion advice at the beginning of the interception chain (outside of the service transaction)
 			interceptors.Add(new ExceptionPromotionAdvice());
 
-			// additional interceptors are added outside of all others
+			// use client culture
+			interceptors.Add(new CultureServerSideAdvice());
+
+			// additional interceptors
 			foreach (var interceptor in AdditionalServiceInterceptorProvider.GetInterceptors(ServiceInterceptSite.Server))
 			{
 				interceptors.Add(interceptor);
@@ -329,6 +338,8 @@ namespace ClearCanvas.Enterprise.Core.ServiceModel
 			var authenticationAttribute = AttributeUtils.GetAttribute<AuthenticationAttribute>(contractAttribute.ServiceContract);
 			var authenticated = authenticationAttribute == null || authenticationAttribute.AuthenticationRequired;
 
+			TransferMode mode = ServiceTransferModeAttribute.GetTransferMode(contractAttribute.ServiceContract);
+
 			// create service URI
 			var uri = new Uri(_baseAddress, contractAttribute.ServiceContract.FullName);
 
@@ -360,7 +371,7 @@ namespace ClearCanvas.Enterprise.Core.ServiceModel
 					contractAttribute.ServiceContract,
 					uri, authenticated,
 					_maxReceivedMessageSize,
-					_certificateSearchDirective));
+					_certificateSearchDirective){SendTimeoutSeconds = SendTimeoutSeconds, TransferMode = mode});
 
 			// add behaviour to inject AOP proxy service factory
 			host.Description.Behaviors.Add(new ServiceFactoryInjectionServiceBehavior(contractAttribute.ServiceContract, serviceFactory));

@@ -115,6 +115,7 @@ namespace ClearCanvas.ImageViewer.Clipboard.ImageExport
 
 		private int _width = 512;
 		private int _height = 512;
+		private int _outputDpi = 96;
 		private Color _backgroundColor = Color.Black;
 		private SizeMode _sizeMode = SizeMode.Scale;
 
@@ -251,6 +252,19 @@ namespace ClearCanvas.ImageViewer.Clipboard.ImageExport
 				{
 					_height = value;
 					this.NotifyPropertyChanged("Height");
+				}
+			}
+		}
+
+		public int OutputDpi
+		{
+			get { return _outputDpi; }
+			set
+			{
+				if (_outputDpi != value)
+				{
+					_outputDpi = value;
+					this.NotifyPropertyChanged("OutputDpi");
 				}
 			}
 		}
@@ -468,23 +482,19 @@ namespace ClearCanvas.ImageViewer.Clipboard.ImageExport
 			if (clipboardItems.Count > 0)
 			{
 				object item = clipboardItems[0].Item;
-				if (item is IImageGraphicProvider)
+				if (item is IPresentationImage)
 				{
-					IImageGraphicProvider imageGraphicProvider = (IImageGraphicProvider) item;
-					component.Height = imageGraphicProvider.ImageGraphic.Rows;
-					component.Width = imageGraphicProvider.ImageGraphic.Columns;
+					var image = (IPresentationImage)item;
+					component.Height = image.SceneSize.Height;
+					component.Width = image.SceneSize.Width;
 				}
 				else if (item is IDisplaySet)
 				{
 					foreach (IPresentationImage image in ((IDisplaySet) item).PresentationImages)
 					{
-						if (image is IImageGraphicProvider)
-						{
-							IImageGraphicProvider imageGraphicProvider = (IImageGraphicProvider) image;
-							component.Height = imageGraphicProvider.ImageGraphic.Rows;
-							component.Width = imageGraphicProvider.ImageGraphic.Columns;
-							break;
-						}
+						component.Height = image.SceneSize.Height;
+						component.Width = image.SceneSize.Width;
+						break;
 					}
 				}
 			}
@@ -597,6 +607,7 @@ namespace ClearCanvas.ImageViewer.Clipboard.ImageExport
 			exportParams.SizeMode = SizeMode;
 			exportParams.OutputSize = new Size(Width, Height);
 			exportParams.BackgroundColor = BackgroundColor;
+			exportParams.Dpi = OutputDpi;
 			return exportParams;
 		}
 

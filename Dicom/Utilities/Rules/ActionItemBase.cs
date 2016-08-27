@@ -23,6 +23,7 @@
 #endregion
 
 using System;
+using System.Globalization;
 using ClearCanvas.Common;
 using ClearCanvas.Common.Actions;
 using ClearCanvas.Common.Specifications;
@@ -82,26 +83,25 @@ namespace ClearCanvas.Dicom.Utilities.Rules
         /// <summary>
         /// Gets or sets the description of the failure when the action execution fails.
         /// </summary>
-        public string FailureReason
-        {
-            get { return _failureReason; }
-            set { _failureReason = value; }
-        }
+		//public string FailureReason
+		//{
+		//    get { return _failureReason; }
+		//    set { _failureReason = value; }
+		//}
 
         #endregion
 
         #region IActionItem<ServerActionContext> Members
 
-        public bool Execute(TActionContext context)
+		public virtual ActionExecuteResult Execute(TActionContext context)
         {
             try
             {
-                return OnExecute(context);
+				return new ActionExecuteResult(OnExecute(context));
             }
             catch (Exception e)
             {
-                FailureReason = String.Format("{0} {1}", e.Message, e.StackTrace);
-                return false;
+                return new ActionExecuteResult(false, String.Format("{0} {1}", e.Message, e.StackTrace));
             }
         }
 
@@ -189,32 +189,32 @@ namespace ClearCanvas.Dicom.Utilities.Rules
             }
             if (typeof(T) == typeof(int))
             {
-                int result = int.Parse(value.ToString());
+                int result = int.Parse(value.ToString(), CultureInfo.InvariantCulture);
                 return (T)(object)result;
             }
             if (typeof(T) == typeof(uint))
             {
-                uint result = uint.Parse(value.ToString());
+                uint result = uint.Parse(value.ToString(), CultureInfo.InvariantCulture);
                 return (T)(object)result;
             }
             if (typeof(T) == typeof(long))
             {
-                long result = long.Parse(value.ToString());
+                long result = long.Parse(value.ToString(), CultureInfo.InvariantCulture);
                 return (T)(object)result;
             }
             if (typeof(T) == typeof(ulong))
             {
-                ulong result = ulong.Parse(value.ToString());
+                ulong result = ulong.Parse(value.ToString(), CultureInfo.InvariantCulture);
                 return (T)(object)result;
             }
             if (typeof(T) == typeof(float))
             {
-                float result = float.Parse(value.ToString());
+                float result = float.Parse(value.ToString(), CultureInfo.InvariantCulture);
                 return (T)(object)result;
             }
             if (typeof(T) == typeof(double))
             {
-                double result = double.Parse(value.ToString());
+                double result = double.Parse(value.ToString(), CultureInfo.InvariantCulture);
                 return (T)(object)result;
             }
             if (typeof(T) == typeof(DateTime))

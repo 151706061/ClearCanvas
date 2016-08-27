@@ -631,4 +631,28 @@
   <data name="LoginWarnings" xml:space="preserve">
     <value>Warnings: </value>
   </data>
+  <data name="NotDiagnostic" xml:space="preserve">
+    <value>Not for diagnostic use.</value>
+  </data>
+  <data name="PrivateBrowsing" xml:space="preserve">
+    <value>It is recommended that private browsing mode (e.g. incognito mode) be used or the browser cache be cleared, and the browser tab closed after each use to prevent exposure of protected health information.</value>
+  </data>
+  <data name="ExternalRequestQueue_EnterSearchCriteria" xml:space="preserve">
+    <value>Please enter search criteria</value>
+  </data>
+  <data name="ExternalRequestQueue_NoResults" xml:space="preserve">
+    <value>No items found matching the provided criteria.</value>
+  </data>
+  <data name="PatientSummary_QCReport" xml:space="preserve">
+    <value>QC Status:</value>
+  </data>
+  <data name="DeleteOrderConfirmDialog_OrderListingLabel" xml:space="preserve">
+    <value>The following order/orders will be deleted:</value>
+  </data>
+  <data name="FinalTransferSyntax" xml:space="preserve">
+    <value>Final Transfer Syntax</value>
+  </data>
+  <data name="OriginalTransferSyntax" xml:space="preserve">
+    <value>Original Transfer Syntax</value>
+  </data>
 </root>

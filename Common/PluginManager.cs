@@ -24,9 +24,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
+using System.Text;
+using System.Threading;
 using ClearCanvas.Common.Utilities;
 
 namespace ClearCanvas.Common
@@ -35,20 +37,93 @@ namespace ClearCanvas.Common
 	/// Loads plugin assemblies dynamically from disk and exposes meta-data about the set of installed
 	/// plugins, extension points, and extensions to the application.
 	/// </summary>
-	public class PluginManager
+	public sealed class PluginManager
 	{
+		#region BackgroundAssemblyLoader
+
+		private class BackgroundAssemblyLoader
+		{
+			private readonly PluginManager _owner;
+			private bool _running;
+			private volatile bool _cancelRequested;
+
+			public BackgroundAssemblyLoader(PluginManager owner)
+			{
+				_owner = owner;
+			}
+
+			public void Run()
+			{
+				if (_running)
+					return;
+
+				// if all plugin assemblies are loaded, nothing to do
+				if (_owner.Plugins.All(p => p.Assembly.IsResolved))
+					return;
+
+				Platform.Log(LogLevel.Debug, "PluginManager: Starting background assembly loading.");
+				ThreadPool.QueueUserWorkItem(state => LoadAssemblies());
+				_running = true;
+			}
+
+			public void Cancel()
+			{
+				if (!_running || _cancelRequested)
+					return;
+
+				_cancelRequested = true;
+				_running = false;
+
+				Platform.Log(LogLevel.Debug, "PluginManager: Suspending background assembly loading.");
+			}
+
+			private void LoadAssemblies()
+			{
+				foreach (var plugin in _owner.Plugins.Where(p => !p.Assembly.IsResolved))
+				{
+					if (_cancelRequested)
+						return;
+
+					try
+					{
+						plugin.Assembly.Resolve();
+					}
+					catch (Exception e)
+					{
+						Platform.Log(LogLevel.Error, e);
+					}
+				}
+			}
+		}
+
+		#endregion
+
 		private readonly List<PluginInfo> _plugins = new List<PluginInfo>();
 		private readonly List<ExtensionInfo> _extensions = new List<ExtensionInfo>();
 		private readonly List<ExtensionPointInfo> _extensionPoints = new List<ExtensionPointInfo>();
 		private readonly string _pluginDir;
-		private event EventHandler<PluginLoadedEventArgs> _pluginProgressEvent;
 
 		private readonly object _syncLock = new object();
+		private readonly PluginLoader _loader;
 		private volatile bool _pluginsLoaded;
+
+		private readonly BackgroundAssemblyLoader _backgroundAssemblyLoader;
 
 		internal PluginManager(string pluginDir)
 		{
 			_pluginDir = pluginDir;
+
+			string[] alternateCacheLocations;
+			_loader = new PluginLoader(pluginDir, GetMetadataCacheFilePath(out alternateCacheLocations), alternateCacheLocations);
+			_backgroundAssemblyLoader = new BackgroundAssemblyLoader(this);
+		}
+
+		/// <summary>
+		/// Gets the plugin manager instance in use by the framework.
+		/// </summary>
+		public static PluginManager Instance
+		{
+			get { return Platform.PluginManager; }
 		}
 
 		#region Public API
@@ -63,14 +138,14 @@ namespace ClearCanvas.Common
 		{
 			get
 			{
-				EnsurePluginsLoaded();
+				EnsurePluginInfoLoaded();
 				return _plugins.AsReadOnly();
 			}
 		}
 
 		/// <summary>
 		/// Gets information about the set of extensions defined across all installed plugins,
-		/// including disabled extensions.
+		/// including disabled and unlicensed extensions.
 		/// </summary>
 		/// <remarks>
 		/// If plugins have not yet been loaded into memory, querying this property will cause them to be loaded.
@@ -79,7 +154,7 @@ namespace ClearCanvas.Common
 		{
 			get
 			{
-				EnsurePluginsLoaded();
+				EnsurePluginInfoLoaded();
 				return _extensions.AsReadOnly();
 			}
 		}
@@ -94,7 +169,7 @@ namespace ClearCanvas.Common
 		{
 			get
 			{
-				EnsurePluginsLoaded();
+				EnsurePluginInfoLoaded();
 				return _extensionPoints.AsReadOnly();
 			}
 		}
@@ -108,15 +183,29 @@ namespace ClearCanvas.Common
 			{
 				lock (_syncLock)
 				{
-					_pluginProgressEvent += value;
+					_loader.PluginLoaded += value;
 				}
 			}
 			remove
 			{
 				lock (_syncLock)
 				{
-					_pluginProgressEvent -= value;
+					_loader.PluginLoaded -= value;
 				}
+			}
+		}
+
+		/// <summary>
+		/// Enables or disables loading of any outstanding plugin assemblies on a background thread.
+		/// </summary>
+		public void EnableBackgroundAssemblyLoading(bool enable)
+		{
+			lock (_syncLock)
+			{
+				if (enable)
+					_backgroundAssemblyLoader.Run();
+				else
+					_backgroundAssemblyLoader.Cancel();
 			}
 		}
 
@@ -124,14 +213,7 @@ namespace ClearCanvas.Common
 
 		#region Helpers
 
-		/// <summary>
-		/// Ensures plugins are loaded exactly once.
-		/// </summary>
-		/// <remarks>
-		/// </remarks>
-		/// <exception cref="PluginException">Specified plugin directory does not exist or 
-		/// a problem has occurred while loading a plugin.</exception>
-		private void EnsurePluginsLoaded()
+		private void EnsurePluginInfoLoaded()
 		{
 			if (!_pluginsLoaded)
 			{
@@ -139,34 +221,24 @@ namespace ClearCanvas.Common
 				{
 					if (!_pluginsLoaded)
 					{
-						LoadPlugins();
+						LoadPluginInfo();
 					}
 				}
 			}
 		}
 
-		/// <summary>
-		/// Loads all plugins in the current plugin directory.
-		/// </summary>
-		/// <remarks>
-		/// This method will traverse the plugin directory and all its subdirectories loading
-		/// all valid plugin assemblies.  A valid plugin is an assembly that is marked with an assembly
-		/// attribute of type <see cref="ClearCanvas.Common.PluginAttribute"/>.
-		/// </remarks>
-		/// <exception cref="PluginException">Specified plugin directory does not exist.</exception>
-		private void LoadPlugins()
+		private void LoadPluginInfo()
 		{
 			if (!Directory.Exists(_pluginDir))
 				throw new PluginException(SR.ExceptionPluginDirectoryNotFound);
 
-			EventsHelper.Fire(_pluginProgressEvent, this, new PluginLoadedEventArgs(SR.MessageFindingPlugins, null));
-
-			// Process the plugin directory
-			FileProcessor.Process(_pluginDir, "*.dll", LoadPlugin, true);
-
-			// If no plugins were loaded, nothing else to do
+			_plugins.AddRange(_loader.LoadPluginInfo());
 			if (_plugins.Count == 0)
+			{
+				// If there are no plugins, there's nothing left to do ... but they were still loaded.
+				_pluginsLoaded = true;
 				return;
+			}
 
 			// compile lists of all extension points and extensions
 			var extensions = new List<ExtensionInfo>(_plugins.SelectMany(p => p.Extensions));
@@ -176,11 +248,10 @@ namespace ClearCanvas.Common
 			PluginInfo.DiscoverExtensionPointsAndExtensions(GetType().Assembly, points, extensions);
 
 			// #742: order the extensions according to the XML configuration
-			List<ExtensionInfo> ordered, remainder;
-			ExtensionSettings.Default.OrderExtensions(extensions, out ordered, out remainder);
+			var ordered = ExtensionSettings.Default.OrderExtensions(extensions);
 
-			// create global extension list, with the ordered set appearing first
-			_extensions.AddRange(CollectionUtils.Concat<ExtensionInfo>(ordered, remainder));
+			// create global extension list
+			_extensions.AddRange(ordered);
 
 			// points do not need to be ordered
 			_extensionPoints.AddRange(points);
@@ -188,53 +259,21 @@ namespace ClearCanvas.Common
 			_pluginsLoaded = true;
 		}
 
-
-		/// <summary>
-		/// Attempts to load the DLL at the specified path and determine whether or not it is a plugin.
-		/// </summary>
-		/// <param name="path"></param>
-		public void LoadPlugin(string path)
+		private static string GetMetadataCacheFilePath(out string[] alternates)
 		{
-			var pluginName = Path.GetFileName(path);
-			try
+			var exePath = Process.GetCurrentProcess().MainModule.FileName;
+			using (var sha = new SHA256CryptoServiceProvider2())
 			{
-				// load assembly
-				var asm = Assembly.LoadFrom(path);
+				// since this is used to generate a file path, we must limit the length of the generated name so it doesn't exceed max path length
+				// we don't simply use MD5 because it throws an exception if the OS has strict cryptographic policies in place (e.g. FIPS)
+				// note: truncation of SHA256 seems to be an accepted method of producing a shorter hash - see notes in HashUtilities
+				var hash = StringUtilities.ToHexString(sha.ComputeHash(Encoding.Unicode.GetBytes(exePath)), 0, 16);
 
-				// is it a plugin??
-				var pluginAttr = (PluginAttribute)asm.GetCustomAttributes(typeof(PluginAttribute), false).FirstOrDefault();
-				if (pluginAttr != null)
-				{
-					_plugins.Add(new PluginInfo(asm, pluginAttr.Name, pluginAttr.Description, pluginAttr.Icon));
-					EventsHelper.Fire(_pluginProgressEvent, this,
-						new PluginLoadedEventArgs(String.Format(SR.FormatLoadingPlugin, pluginName), asm));
-				}
-			}
-			catch (BadImageFormatException e)
-			{
-				// unmanaged DLL in the plugin directory
-				Platform.Log(LogLevel.Debug, SR.LogFoundUnmanagedDLL, e.FileName);
-			}
-			catch (ReflectionTypeLoadException e)
-			{
-				// this exception usually means one of the dependencies is missing
-				Platform.Log(LogLevel.Error, SR.LogFailedToProcessPluginAssembly, pluginName);
+				// alternate locations are treated as read-only pre-generated cache files (e.g. for Portable workstation)
+				alternates = new[] {Path.Combine(Platform.PluginDirectory, "pxpx", hash)};
 
-				// log a detail message for each missing dependency
-				foreach (var loaderException in e.LoaderExceptions)
-				{
-					// just log the message, don't need the full stack trace
-					Platform.Log(LogLevel.Error, loaderException.Message);
-				}
-			}
-			catch (FileNotFoundException e)
-			{
-				Platform.Log(LogLevel.Error, e, "File not found while loading plugin: {0}", path);
-			}
-			catch (Exception e)
-			{
-				// there was a problem processing this assembly
-				Platform.Log(LogLevel.Error, e, SR.LogFailedToProcessPluginAssembly, path);
+				// return the main location, which must be writable
+				return Path.Combine(Platform.ApplicationDataDirectory, "pxpx", hash);
 			}
 		}
 

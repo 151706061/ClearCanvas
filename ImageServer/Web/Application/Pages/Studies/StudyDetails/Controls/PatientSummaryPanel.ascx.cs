@@ -24,9 +24,10 @@
 
 using System;
 using System.Web.UI;
-using ClearCanvas.Dicom;
-using ClearCanvas.Dicom.Utilities;
+using ClearCanvas.Common;
 using ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Code;
+using ClearCanvas.ImageServer.Web.Common;
+using ClearCanvas.ImageServer.Web.Common.Data.DataSource;
 using SR = Resources.SR;
 
 namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Controls
@@ -34,12 +35,12 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
     /// <summary>
     /// Patient summary information panel within the <see cref="StudyDetailsPanel"/> 
     /// </summary>
-    public partial class PatientSummaryPanel : UserControl
+	public partial class PatientSummaryPanel : UserControl, IPatientSummaryPanel
     {
         #region private members
         private PatientSummary _patientSummary;
+		private IPatientSummaryPanelExtension _customizer;
         #endregion private members
-
 
         #region Public Properties
         /// <summary>
@@ -51,12 +52,25 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
             set { _patientSummary = value; }
         }
 
+	    public UserControl Control
+	    {
+		    get { return this; }
+	    }
+
+		public StudySummary TheStudy { get; set; }
+
         #endregion Public Properties
 
+		#region Customizer
+		public PatientSummaryPanel()
+		{
+			LoadCustomzier();
+		}
+		#endregion
 
-        #region Protected methods
+		#region Protected methods
 
-        public override void DataBind()
+		public override void DataBind()
         {
             base.DataBind();
             if (_patientSummary != null)
@@ -110,12 +124,30 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
                         PatientSex.Text = SR.Unknown;
                 }
 
-
                 PatientId.Text = _patientSummary.PatientId;
-
             }
 
+			if (_customizer != null)
+			{
+				_customizer.OnPageLoad(this);
+			}
+			else
+			{
+				QCPanel.Visible = false;
+			}
         }
+
+		private void LoadCustomzier()
+		{
+			try
+			{
+				_customizer = new PatientSummaryPanelExtensionPoint().CreateExtension() as IPatientSummaryPanelExtension;
+			}
+			catch (Exception ex)
+			{
+				Platform.Log(LogLevel.Debug, ex);
+			}
+		}
 
         #endregion Protected methods
     }

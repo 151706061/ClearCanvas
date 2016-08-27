@@ -38,7 +38,7 @@ namespace ClearCanvas.Enterprise.Common
 	#region RemoteServiceProviderArgs class
 
 	/// <summary>
-	/// Encapsulates options that confgiure a <see cref="RemoteServiceProviderBase{T}"/>.
+	/// Encapsulates options that configure a <see cref="RemoteServiceProviderBase{T}"/>.
 	/// </summary>
 	public class RemoteServiceProviderArgs
 	{
@@ -92,7 +92,7 @@ namespace ClearCanvas.Enterprise.Common
 			string baseUrl,
 			string failoverBaseUrl,
 			string configurationClassName,
-			int maxReceivedMessageSize,
+			long maxReceivedMessageSize,
 			X509CertificateValidationMode certificateValidationMode,
 			X509RevocationMode revocationMode,
 			string credentialsProviderClassName)
@@ -131,7 +131,13 @@ namespace ClearCanvas.Enterprise.Common
 		/// <summary>
 		/// Maximum size in bytes of message received by the service client.
 		/// </summary>
-		public int MaxReceivedMessageSize { get; set; }
+		public long MaxReceivedMessageSize { get; set; }
+
+		/// <summary>
+		/// The time, in seconds, in which a send operation must complete.
+		/// </summary>
+		/// <remarks>Value less than or equal to zero should be ignored.</remarks>
+		public int SendTimeoutSeconds { get; set; }
 
 		/// <summary>
 		/// Certificate validation mode.
@@ -325,11 +331,13 @@ namespace ClearCanvas.Enterprise.Common
 				interceptors.Add(interceptor);
 			}
 
-			if (ClearCanvas.Common.Caching.Cache.IsSupported() && IsResponseCachingEnabled(serviceType))
+			if (ClearCanvas.Common.Caching.Cache.IsSupported())
 			{
 				// add response-caching client-side advice
 				interceptors.Add(_responseCachingAdvice);
 			}
+
+			interceptors.Add(new CultureClientSideAdvice());
 
 			// if failover was defined, add fail-over advice at the end of the list, closest the target call
 			if(_failoverAdvice != null)
@@ -394,13 +402,6 @@ namespace ClearCanvas.Enterprise.Common
 					options,
 					aopChain);
 			}
-		}
-
-		private static bool IsResponseCachingEnabled(Type serviceType)
-		{
-			//TODO (CR Sept 2010): Temporary hack to disable configuration document caching on the client side (#7179).
-			bool isConfigurationService = typeof (IApplicationConfigurationReadService).IsAssignableFrom(serviceType);
-			return !isConfigurationService || RemoteCoreServiceSettings.Default.ConfigurationServiceResponseCachingEnabled;
 		}
 
 		#endregion

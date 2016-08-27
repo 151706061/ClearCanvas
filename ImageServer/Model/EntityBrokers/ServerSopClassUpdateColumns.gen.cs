@@ -31,7 +31,7 @@ namespace ClearCanvas.ImageServer.Model.EntityBrokers
     using ClearCanvas.Dicom;
     using ClearCanvas.ImageServer.Enterprise;
 
-   public class ServerSopClassUpdateColumns : EntityUpdateColumns
+   public partial class ServerSopClassUpdateColumns : EntityUpdateColumns
    {
        public ServerSopClassUpdateColumns()
        : base("ServerSopClass")
@@ -51,6 +51,11 @@ namespace ClearCanvas.ImageServer.Model.EntityBrokers
         public Boolean NonImage
         {
             set { SubParameters["NonImage"] = new EntityUpdateColumn<Boolean>("NonImage", value); }
+        }
+        [EntityFieldDatabaseMappingAttribute(TableName="ServerSopClass", ColumnName="ImplicitOnly")]
+        public Boolean ImplicitOnly
+        {
+            set { SubParameters["ImplicitOnly"] = new EntityUpdateColumn<Boolean>("ImplicitOnly", value); }
         }
     }
 }

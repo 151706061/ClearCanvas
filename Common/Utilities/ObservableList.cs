@@ -54,6 +54,14 @@ namespace ClearCanvas.Common.Utilities
 			_list = new List<TItem>();
 		}
 
+        /// <summary>
+        /// Constructor that takes an initial capacity for the internal list.
+        /// </summary>
+        public ObservableList(int capacity)
+        {
+            _list = new List<TItem>(capacity);
+        }
+
 		/// <summary>
 		/// Copy constructor that takes a set of <typeparamref name="TItem"/>s and adds them to this list.
 		/// </summary>
@@ -74,7 +82,7 @@ namespace ClearCanvas.Common.Utilities
 			set { _enableEvents = value; }
 		}
 
-		/// <summary>
+	    /// <summary>
 		/// Sorts the list given the input <paramref name="sortComparer"/>.
 		/// </summary>
 		/// <param name="sortComparer">A comparer to be used to sort the list.</param>
@@ -168,12 +176,12 @@ namespace ClearCanvas.Common.Utilities
 		{
 			get
 			{
-				Platform.CheckIndexRange(index, 0, this.Count - 1, "index");
+				Platform.CheckArgumentRange(index, 0, this.Count - 1, "index");
 				return _list[index];
 			}
 			set
 			{
-				Platform.CheckIndexRange(index, 0, this.Count - 1, "index");
+				Platform.CheckArgumentRange(index, 0, this.Count - 1, "index");
 
 				ListEventArgs<TItem> args = new ListEventArgs<TItem>(_list[index], index);
 				OnItemChanging(args);

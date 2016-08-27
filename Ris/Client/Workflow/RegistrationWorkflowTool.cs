@@ -47,9 +47,9 @@ namespace ClearCanvas.Ris.Client.Workflow
 	}
 
 
-	[MenuAction("apply", "folderexplorer-items-contextmenu/Check-in", "Apply")]
-	[ButtonAction("apply", "folderexplorer-items-toolbar/Check-in", "Apply")]
-	[IconSet("apply", IconScheme.Colour, "Icons.CheckInToolSmall.png", "Icons.CheckInToolMedium.png", "Icons.CheckInToolLarge.png")]
+	[MenuAction("apply", "folderexplorer-items-contextmenu/MenuCheckIn", "Apply")]
+	[ButtonAction("apply", "folderexplorer-items-toolbar/MenuCheckIn", "Apply")]
+	[IconSet("apply", "Icons.CheckInToolSmall.png", "Icons.CheckInToolMedium.png", "Icons.CheckInToolLarge.png")]
 	[EnabledStateObserver("apply", "Enabled", "EnabledChanged")]
 	[ActionPermission("apply", ClearCanvas.Ris.Application.Common.AuthorityTokens.Workflow.Procedure.CheckIn)]
 	[ExtensionOf(typeof(RegistrationWorkflowItemToolExtensionPoint))]

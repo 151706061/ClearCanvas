@@ -147,6 +147,11 @@ namespace ClearCanvas.Dicom.Utilities.Xml
                 XmlElement baseInstance = _seriesTagsStream.GetMemento(theDocument, settings);
                 baseElement.AppendChild(baseInstance);
             }
+            else
+            {
+                _seriesTagsStream = null;
+            }
+
             series.AppendChild(baseElement);
 
             foreach (InstanceXml instance in _instanceList.Values)
@@ -159,6 +164,62 @@ namespace ClearCanvas.Dicom.Utilities.Xml
 
             return series;
         }
+
+		internal StudyXmlMemento.StudyXmlNode GetMemento(StudyXmlMemento theDocument, StudyXmlOutputSettings settings)
+		{
+			_dirty = false;
+			// Calc the base attributes
+			CalculateBaseCollectionForSeries();
+
+			var seriesElement = new StudyXmlMemento.StudyXmlNode {ElementName = "Series"};
+			seriesElement.AddAttribute("UID",_seriesInstanceUid);
+
+
+			// If there's only 1 total image in the series, leave an empty base instance
+			// and just have the entire image be stored.
+			if (_instanceList.Count > 1)
+			{
+				if (!string.IsNullOrEmpty(_seriesTagsStream.XmlFragment))
+				{
+					seriesElement.AddChild(new StudyXmlMemento.StudyXmlNode(_seriesTagsStream.XmlFragment));
+				}
+				else
+				{
+					XmlElement baseElement = theDocument.Document.CreateElement("BaseInstance");
+					XmlElement baseInstance = _seriesTagsStream.GetMemento(theDocument.Document, settings);
+					baseElement.AppendChild(baseInstance);
+
+					var baseNode = new StudyXmlMemento.StudyXmlNode(baseElement);
+					_seriesTagsStream.XmlFragment = baseNode.XmlElementFragment;
+					seriesElement.AddChild(baseNode);
+				}
+			}
+			else
+			{
+				_seriesTagsStream = null;
+				seriesElement.AddChild(new StudyXmlMemento.StudyXmlNode("<BaseInstance/>"));
+			}
+
+			foreach (InstanceXml instance in _instanceList.Values)
+			{
+				instance.SetBaseInstance(_seriesTagsStream);
+
+				if (!string.IsNullOrEmpty(instance.XmlFragment))
+				{
+					seriesElement.AddChild(new StudyXmlMemento.StudyXmlNode(instance.XmlFragment));
+				}
+				else
+				{
+					XmlElement instanceElement = instance.GetMemento(theDocument.Document, settings);
+
+					var node = new StudyXmlMemento.StudyXmlNode(instanceElement);
+					instance.XmlFragment = node.XmlElementFragment;
+					seriesElement.AddChild(node);
+				}
+			}
+
+			return seriesElement;
+		}
 
         internal void SetMemento(XmlNode theSeriesNode)
         {

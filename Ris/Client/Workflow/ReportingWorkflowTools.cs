@@ -34,10 +34,10 @@ using ClearCanvas.Ris.Application.Common.ReportingWorkflow;
 
 namespace ClearCanvas.Ris.Client.Workflow
 {
-	[MenuAction("apply", "folderexplorer-items-contextmenu/Send to Transcription", "Apply")]
-	[IconSet("apply", IconScheme.Colour, "Icons.CompleteToolSmall.png", "Icons.CompleteToolMedium.png", "Icons.CompleteToolLarge.png")]
+	[MenuAction("apply", "folderexplorer-items-contextmenu/MenuSendToTranscription", "Apply")]
+	[IconSet("apply", "Icons.CompleteToolSmall.png", "Icons.CompleteToolMedium.png", "Icons.CompleteToolLarge.png")]
 	[EnabledStateObserver("apply", "Enabled", "EnabledChanged")]
-	[VisibleStateObserver("apply", "Visible", "VisibleChanged")]
+	[VisibleStateObserver("apply", "Visible")]
 	[ExtensionOf(typeof(ReportingWorkflowItemToolExtensionPoint))]
 	public class CompleteInterpretationForTranscriptionTool : ReportingWorkflowItemTool
 	{
@@ -58,12 +58,6 @@ namespace ClearCanvas.Ris.Client.Workflow
 		public bool Visible
 		{
 			get { return _workflowConfiguration.EnableTranscriptionWorkflow; }
-		}
-
-		public event EventHandler VisibleChanged
-		{
-			add { }
-			remove { }
 		}
 
 		protected override bool Execute(ReportingWorklistItemSummary item)
@@ -94,10 +88,10 @@ namespace ClearCanvas.Ris.Client.Workflow
 		}
 	}
 
-	[MenuAction("apply", "folderexplorer-items-contextmenu/Submit for Review", "Apply")]
+	[MenuAction("apply", "folderexplorer-items-contextmenu/MenuSubmitForReview", "Apply")]
 	[EnabledStateObserver("apply", "Enabled", "EnabledChanged")]
-	[VisibleStateObserver("apply", "Visible", "VisibleChanged")]
-	[IconSet("apply", IconScheme.Colour, "Icons.SubmitForReviewSmall.png", "Icons.SubmitForReviewMedium.png", "Icons.SubmitForReviewLarge.png")]
+	[VisibleStateObserver("apply", "Visible")]
+	[IconSet("apply", "Icons.SubmitForReviewSmall.png", "Icons.SubmitForReviewMedium.png", "Icons.SubmitForReviewLarge.png")]
 	[ActionPermission("apply", Application.Common.AuthorityTokens.Workflow.Report.Create, Application.Common.AuthorityTokens.Workflow.Report.SubmitForReview)]
 	[ExtensionOf(typeof(ReportingWorkflowItemToolExtensionPoint))]
 	public class CompleteInterpretationForVerificationTool : ReportingWorkflowItemTool
@@ -107,7 +101,6 @@ namespace ClearCanvas.Ris.Client.Workflow
 		{
 		}
 
-		public event EventHandler VisibleChanged;
 		public bool Visible
 		{
 			get { return new WorkflowConfigurationReader().EnableInterpretationReviewWorkflow; }
@@ -148,9 +141,9 @@ namespace ClearCanvas.Ris.Client.Workflow
 		}
 	}
 
-	[MenuAction("apply", "folderexplorer-items-contextmenu/Discard Report", "Apply")]
-	[MenuAction("apply", "folderexplorer-items-toolbar/Discard Report", "Apply")]
-	[IconSet("apply", IconScheme.Colour, "Icons.CancelReportSmall.png", "Icons.CancelReportMedium.png", "Icons.CancelReportLarge.png")]
+	[MenuAction("apply", "folderexplorer-items-contextmenu/MenuDiscardReport", "Apply")]
+	[MenuAction("apply", "folderexplorer-items-toolbar/MenuDiscardReport", "Apply")]
+	[IconSet("apply", "Icons.CancelReportSmall.png", "Icons.CancelReportMedium.png", "Icons.CancelReportLarge.png")]
 	[EnabledStateObserver("apply", "Enabled", "EnabledChanged")]
 	[IconSetObserver("apply", "CurrentIconSet", "LabelChanged")]
 	[LabelValueObserver("apply", "Label", "LabelChanged")]
@@ -159,8 +152,8 @@ namespace ClearCanvas.Ris.Client.Workflow
 	[ExtensionOf(typeof(RadiologistAdminWorkflowItemToolExtensionPoint))]
 	public class DiscardReportTool : ReportingWorkflowItemTool
 	{
-		private IconSet _cancelAddendum = new IconSet(IconScheme.Colour, "Icons.CancelAddendumSmall.png", "Icons.CancelAddendumSmall.png", "Icons.CancelAddendumSmall.png");
-		private IconSet _cancelReport = new IconSet(IconScheme.Colour, "Icons.CancelReportSmall.png", "Icons.CancelReportMedium.png", "Icons.CancelReportLarge.png");
+		private IconSet _cancelAddendum = new IconSet("Icons.CancelAddendumSmall.png", "Icons.CancelAddendumSmall.png", "Icons.CancelAddendumSmall.png");
+		private IconSet _cancelReport = new IconSet("Icons.CancelReportSmall.png", "Icons.CancelReportMedium.png", "Icons.CancelReportLarge.png");
 
 		public DiscardReportTool()
 			: base("CancelReportingStep")
@@ -172,7 +165,7 @@ namespace ClearCanvas.Ris.Client.Workflow
 			get
 			{
 				ReportingWorklistItemSummary item = GetSelectedItem();
-				return (item != null && item.IsAddendumStep) ? "Discard Addendum" : "Discard Report";
+				return (item != null && item.IsAddendumStep) ? SR.TooltipDiscardAddendum : SR.TooltipDiscardReport;
 			}
 		}
 
@@ -212,9 +205,9 @@ namespace ClearCanvas.Ris.Client.Workflow
 		}
 	}
 
-	[MenuAction("apply", "folderexplorer-items-contextmenu/Verify", "Apply")]
-	[ButtonAction("apply", "folderexplorer-items-toolbar/Verify", "Apply")]
-	[IconSet("apply", IconScheme.Colour, "Icons.VerifyReportSmall.png", "Icons.VerifyReportMedium.png", "Icons.VerifyReportLarge.png")]
+	[MenuAction("apply", "folderexplorer-items-contextmenu/MenuVerify", "Apply")]
+	[ButtonAction("apply", "folderexplorer-items-toolbar/MenuVerify", "Apply")]
+	[IconSet("apply", "Icons.VerifyReportSmall.png", "Icons.VerifyReportMedium.png", "Icons.VerifyReportLarge.png")]
 	[EnabledStateObserver("apply", "Enabled", "EnabledChanged")]
 	[ActionPermission("apply", ClearCanvas.Ris.Application.Common.AuthorityTokens.Workflow.Report.Create,
 	   ClearCanvas.Ris.Application.Common.AuthorityTokens.Workflow.Report.Verify)]
@@ -301,9 +294,9 @@ namespace ClearCanvas.Ris.Client.Workflow
 		}
 	}
 
-	[MenuAction("apply", "folderexplorer-items-contextmenu/Add Addendum", "Apply")]
-	[ButtonAction("apply", "folderexplorer-items-toolbar/Add Addendum", "Apply")]
-	[IconSet("apply", IconScheme.Colour, "Icons.AddAddendumToolSmall.png", "Icons.AddAddendumToolMedium.png", "Icons.AddAddendumToolLarge.png")]
+	[MenuAction("apply", "folderexplorer-items-contextmenu/MenuAddAddendum", "Apply")]
+	[ButtonAction("apply", "folderexplorer-items-toolbar/MenuAddAddendum", "Apply")]
+	[IconSet("apply", "Icons.AddAddendumToolSmall.png", "Icons.AddAddendumToolMedium.png", "Icons.AddAddendumToolLarge.png")]
 	[EnabledStateObserver("apply", "Enabled", "EnabledChanged")]
 	[ActionPermission("apply", ClearCanvas.Ris.Application.Common.AuthorityTokens.Workflow.Report.Create)]
 	[ExtensionOf(typeof(ReportingWorkflowItemToolExtensionPoint))]
@@ -340,7 +333,7 @@ namespace ClearCanvas.Ris.Client.Workflow
 	}
 
 #if DEBUG	// only available in debug builds (only used for testing)
-	[MenuAction("apply", "folderexplorer-items-contextmenu/Publish", "Apply")]
+	[MenuAction("apply", "folderexplorer-items-contextmenu/MenuPublish", "Apply")]
 	[EnabledStateObserver("apply", "Enabled", "EnabledChanged")]
 	[ActionPermission("apply", ClearCanvas.Ris.Application.Common.AuthorityTokens.Development.TestPublishReport)]
 	[ExtensionOf(typeof(ReportingWorkflowItemToolExtensionPoint))]

@@ -34,6 +34,7 @@ using ClearCanvas.Common;
 using ClearCanvas.Common.Utilities;
 using ClearCanvas.Dicom.Audit;
 using ClearCanvas.ImageServer.Common;
+using ClearCanvas.ImageServer.Common.Helpers;
 using ClearCanvas.ImageServer.Model;
 using ClearCanvas.ImageServer.Web.Application.Controls;
 using ClearCanvas.ImageServer.Web.Application.Helpers;
@@ -42,7 +43,7 @@ using ClearCanvas.ImageServer.Web.Common.Data;
 using ClearCanvas.ImageServer.Web.Common.Data.DataSource;
 using ClearCanvas.ImageServer.Web.Common.Security;
 using ClearCanvas.ImageServer.Web.Common.WebControls.UI;
-using AuthorityTokens=ClearCanvas.ImageServer.Enterprise.Authentication.AuthorityTokens;
+using AuthorityTokens = ClearCanvas.ImageServer.Common.Authentication.AuthorityTokens;
 using Resources;
 using SR=Resources.SR;
 
@@ -95,15 +96,15 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
         {
             get
             {
-                return String.IsNullOrEmpty(PatientId.Text) &&
-                       String.IsNullOrEmpty(PatientName.Text) &&
-                       String.IsNullOrEmpty(AccessionNumber.Text) &&
+                return String.IsNullOrEmpty(PatientId.TrimText) &&
+                       String.IsNullOrEmpty(PatientName.TrimText) &&
+                       String.IsNullOrEmpty(AccessionNumber.TrimText) &&
                        String.IsNullOrEmpty(ToStudyDate.Text) &&
                        String.IsNullOrEmpty(FromStudyDate.Text) &&
-                       String.IsNullOrEmpty(StudyDescription.Text) &&
-                       String.IsNullOrEmpty(ReferringPhysiciansName.Text) &&
-                       String.IsNullOrEmpty(ResponsibleOrganization.Text) &&
-                       String.IsNullOrEmpty(ResponsiblePerson.Text) &&
+                       String.IsNullOrEmpty(StudyDescription.TrimText) &&
+                       String.IsNullOrEmpty(ReferringPhysiciansName.TrimText) &&
+                       String.IsNullOrEmpty(ResponsibleOrganization.TrimText) &&
+                       String.IsNullOrEmpty(ResponsiblePerson.TrimText) &&
                        ModalityListBox.SelectedIndex < 0 &&
                        StatusListBox.SelectedIndex < 0 &&
                        ConfigurationManager.AppSettings["DisplaySearchWarning"].ToLower().Equals("true");
@@ -176,10 +177,10 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
         {
             get
             {
-                if (!Thread.CurrentPrincipal.IsInRole("Viewer/Clinical"))
-                    return Page.ResolveClientUrl(ImageServerConstants.PageURLs.EmbeddedViewImagesPage);
+//                if (!Thread.CurrentPrincipal.IsInRole(ClearCanvas.ImageViewer.AuthorityTokens.ViewerClinical))
+//                    return Page.ResolveClientUrl(ImageServerConstants.PageURLs.EmbeddedViewImagesPage);
 
-                return Page.ResolveClientUrl(ConfigurationManager.AppSettings["WebViewerPage"] ?? ImageServerConstants.PageURLs.ViewImagesPage);
+                return Page.ResolveClientUrl(ConfigurationManager.AppSettings["WebViewerPage"] ?? ImageServerConstants.PageURLs.ErrorPage);
             }
         }
         
@@ -194,7 +195,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
         [ClientPropertyName("OpenNewWindow")]
         public bool OpenNewWindow
         {
-            get { return Thread.CurrentPrincipal.IsInRole("Viewer/Clinical"); }
+            get { return false; }
         }
 
 
@@ -237,8 +238,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
 
             ClearToStudyDateButton.Attributes["onclick"] = ScriptHelper.ClearDate(ToStudyDate.ClientID, ToStudyDateCalendarExtender.ClientID);
             ClearFromStudyDateButton.Attributes["onclick"] = ScriptHelper.ClearDate(FromStudyDate.ClientID, FromStudyDateCalendarExtender.ClientID);
-            ToStudyDate.Attributes["OnChange"] = ScriptHelper.CheckDateRange(FromStudyDate.ClientID, ToStudyDate.ClientID, ToStudyDate.ClientID, ToStudyDateCalendarExtender.ClientID, "To Date must be greater than From Date");
-            FromStudyDate.Attributes["OnChange"] = ScriptHelper.CheckDateRange(FromStudyDate.ClientID, ToStudyDate.ClientID, FromStudyDate.ClientID, FromStudyDateCalendarExtender.ClientID, "From Date must be less than To Date");
+			SearchButton.Attributes["onclick"] = ScriptHelper.CheckDateRange(FromStudyDate.ClientID, ToStudyDate.ClientID, "To Date must be greater than From Date");
             
             GridPagerTop.InitializeGridPager(SR.GridPagerStudySingleItem, SR.GridPagerStudyMultipleItems, StudyListGridView.TheGrid,
                                              () => StudyListGridView.ResultCount, ImageServerConstants.GridViewPagerPosition.Top);
@@ -291,24 +291,24 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
                                             source.Partition = ServerPartition;
                                             source.DateFormats = ToStudyDateCalendarExtender.Format;
 
-                                            if (!String.IsNullOrEmpty(PatientId.Text))
-                                                source.PatientId = SearchHelper.TrailingWildCard(PatientId.Text);
-                                            if (!String.IsNullOrEmpty(PatientName.Text))
-                                                source.PatientName = SearchHelper.NameWildCard(PatientName.Text);
-                                            if (!String.IsNullOrEmpty(AccessionNumber.Text))
-                                                source.AccessionNumber = SearchHelper.TrailingWildCard(AccessionNumber.Text);
+                                            if (!String.IsNullOrEmpty(PatientId.TrimText))
+                                                source.PatientId = SearchHelper.TrailingWildCard(PatientId.TrimText);
+                                            if (!String.IsNullOrEmpty(PatientName.TrimText))
+                                                source.PatientName = SearchHelper.NameWildCard(PatientName.TrimText);
+                                            if (!String.IsNullOrEmpty(AccessionNumber.TrimText))
+                                                source.AccessionNumber = SearchHelper.TrailingWildCard(AccessionNumber.TrimText);
                                             if (!String.IsNullOrEmpty(ToStudyDate.Text))
                                                 source.ToStudyDate = ToStudyDate.Text;
                                             if (!String.IsNullOrEmpty(FromStudyDate.Text))
                                                 source.FromStudyDate = FromStudyDate.Text;
-                                            if (!String.IsNullOrEmpty(StudyDescription.Text))
-                                                source.StudyDescription = SearchHelper.LeadingAndTrailingWildCard(StudyDescription.Text);
-                                            if (!String.IsNullOrEmpty(ReferringPhysiciansName.Text))
-                                                source.ReferringPhysiciansName = SearchHelper.NameWildCard(ReferringPhysiciansName.Text);
-                                            if (!String.IsNullOrEmpty(ResponsiblePerson.Text))
-                                                source.ResponsiblePerson = SearchHelper.NameWildCard(ResponsiblePerson.Text);
-                                            if (!String.IsNullOrEmpty(ResponsibleOrganization.Text))
-                                                source.ResponsibleOrganization = SearchHelper.NameWildCard(ResponsibleOrganization.Text);
+                                            if (!String.IsNullOrEmpty(StudyDescription.TrimText))
+                                                source.StudyDescription = SearchHelper.LeadingAndTrailingWildCard(StudyDescription.TrimText);
+                                            if (!String.IsNullOrEmpty(ReferringPhysiciansName.TrimText))
+                                                source.ReferringPhysiciansName = SearchHelper.NameWildCard(ReferringPhysiciansName.TrimText);
+                                            if (!String.IsNullOrEmpty(ResponsiblePerson.TrimText))
+                                                source.ResponsiblePerson = SearchHelper.NameWildCard(ResponsiblePerson.TrimText);
+                                            if (!String.IsNullOrEmpty(ResponsibleOrganization.TrimText))
+                                                source.ResponsibleOrganization = SearchHelper.NameWildCard(ResponsibleOrganization.TrimText);
                                             
                                             if (ModalityListBox.SelectedIndex > -1)
                                             {
@@ -343,7 +343,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
             MoveStudyButton.Roles = AuthorityTokens.Study.Move;
             DeleteStudyButton.Roles = AuthorityTokens.Study.Delete;
             RestoreStudyButton.Roles = AuthorityTokens.Study.Restore;
-            AssignAuthorityGroupsButton.Roles = ClearCanvas.ImageServer.Enterprise.Authentication.AuthorityTokens.Study.EditDataAccess;
+            AssignAuthorityGroupsButton.Roles = ClearCanvas.ImageServer.Common.Authentication.AuthorityTokens.Study.EditDataAccess;
         }
 
     	#endregion Private Methods
@@ -424,16 +424,16 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
                 StudyListGridView.Refresh();    
             }
         	var sb = new StringBuilder();
-			if(!String.IsNullOrEmpty(PatientId.Text))
-				sb.AppendFormat("PatientId={0};", PatientId.Text);
-            if(!String.IsNullOrEmpty(PatientName.Text))
-				sb.AppendFormat("PatientsName={0};", PatientName.Text);
-            if(!String.IsNullOrEmpty(AccessionNumber.Text))
-				sb.AppendFormat("AccessionNumber={0};", AccessionNumber.Text);
+			if(!String.IsNullOrEmpty(PatientId.TrimText))
+				sb.AppendFormat("PatientId={0};", PatientId.TrimText);
+            if(!String.IsNullOrEmpty(PatientName.TrimText))
+				sb.AppendFormat("PatientsName={0};", PatientName.TrimText);
+            if(!String.IsNullOrEmpty(AccessionNumber.TrimText))
+				sb.AppendFormat("AccessionNumber={0};", AccessionNumber.TrimText);
             if(!String.IsNullOrEmpty(ToStudyDate.Text)||!String.IsNullOrEmpty(FromStudyDate.Text))
 				sb.AppendFormat("StudyDate={0}-{1};", FromStudyDate.Text, ToStudyDate.Text);
-            if(!String.IsNullOrEmpty(StudyDescription.Text))
-				sb.AppendFormat("StudyDescription={0};", StudyDescription.Text);
+            if(!String.IsNullOrEmpty(StudyDescription.TrimText))
+				sb.AppendFormat("StudyDescription={0};", StudyDescription.TrimText);
 			if (ModalityListBox.SelectedIndex < 0)
 			{
 				bool first = true;
@@ -460,7 +460,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
 											 null,
 											 SessionManager.Current.Credentials.DisplayName),
 				ServerPartition.AeTitle,ServerPlatform.HostId,sb.ToString());
-			ServerPlatform.LogAuditMessage(helper);
+			ServerAuditHelper.LogAuditMessage(helper);
         }
         
 		protected void RestoreStudyButton_Click(object sender, ImageClickEventArgs e)

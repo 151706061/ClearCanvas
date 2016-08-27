@@ -74,11 +74,17 @@
     <Compile Include="AttachmentSummaryTable.cs" />
     <Compile Include="AuditHelper.cs" />
     <Compile Include="AuditDataContracts.cs" />
-    <Compile Include="AuthorityTokens.cs" />
     <Compile Include="BannerSettings.cs" />
     <Compile Include="AttachDocumentComponent.cs" />
     <Compile Include="CancelOrderComponent.cs" />
     <Compile Include="IViewerIntegration.cs" />
+    <Compile Include="LoginFacilityProviderSettings.cs" />
+    <Compile Include="LoginFacilityProviderSettings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <DependentUpon>LoginFacilityProviderSettings.settings</DependentUpon>
+    </Compile>
+    <Compile Include="GlobalHomeStartupActionProvider.cs" />
     <Compile Include="UnmergeOrderComponent.cs" />
     <Compile Include="DocumentViewTool.cs" />
     <Compile Include="LoginFacilityProvider.cs" />
@@ -247,6 +253,12 @@
     <Compile Include="UserLookupHandler.cs" />
     <Compile Include="UserWorklistTool.cs" />
     <Compile Include="ViewImagesHelper.cs" />
+    <Compile Include="ViewImagesSettings.cs" />
+    <Compile Include="ViewImagesSettings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <DependentUpon>ViewImagesSettings.settings</DependentUpon>
+    </Compile>
     <Compile Include="VisitDetailsEditorComponent.cs" />
     <Compile Include="VisitDetailViewComponent.cs" />
     <Compile Include="VisitEditorComponent.cs" />
@@ -299,7 +311,6 @@
     <Compile Include="DocumentManager.cs" />
     <Compile Include="ExceptionPolicies.cs" />
     <Compile Include="LookupHandler.cs" />
-    <Compile Include="OrderSummaryTable.cs" />
     <Compile Include="PatientBiographyDocument.cs" />
     <Compile Include="ProcedurePlanSummaryTable.cs" />
     <Compile Include="PatientProfileTable.cs" />
@@ -375,7 +386,6 @@
     </Compile>
     <Compile Include="StorageFolder.cs" />
     <Compile Include="TelephoneNumberTable.cs" />
-    <Compile Include="TestStorageFolders.cs" />
     <Compile Include="TextFieldMasks.cs" />
     <Compile Include="WorkflowFolder.cs" />
     <Compile Include="LoginDialogSettings.cs" />
@@ -456,6 +466,10 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>HomePageSettings.Designer.cs</LastGenOutput>
     </None>
+    <None Include="LoginFacilityProviderSettings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>LoginFacilityProviderSettings.Designer.cs</LastGenOutput>
+    </None>
     <None Include="OrderEditorComponentSettings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>OrderEditorComponentSettings.Designer.cs</LastGenOutput>
@@ -488,6 +502,10 @@
     <None Include="SearchComponentSettings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>SearchComponentSettings.Designer.cs</LastGenOutput>
+    </None>
+    <None Include="ViewImagesSettings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>ViewImagesSettings.Designer.cs</LastGenOutput>
     </None>
     <None Include="WebServicesSettings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

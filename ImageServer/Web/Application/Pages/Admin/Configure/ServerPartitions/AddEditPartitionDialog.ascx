@@ -22,6 +22,7 @@
 
 --%>
 
+
 <%@ Control Language="C#" AutoEventWireup="true" Inherits="ClearCanvas.ImageServer.Web.Application.Pages.Admin.Configure.ServerPartitions.AddEditPartitionDialog"
     Codebehind="AddEditPartitionDialog.ascx.cs" %>
 <%@ Import Namespace="ClearCanvas.ImageServer.Web.Common.Security"%>
@@ -213,7 +214,7 @@
                     </ContentTemplate>
                     <HeaderTemplate><%= Titles.AdminPartition_AddEditDialog_RemoteDevicesTabTitle %></HeaderTemplate>
                 </aspAjax:TabPanel>
-                 <aspAjax:TabPanel ID="TabPanel1" runat="server" HeaderText="GeneralTabPanel" CssClass="DialogTabControl">
+                 <aspAjax:TabPanel ID="StudyMatchingTabPanel" runat="server" HeaderText="GeneralTabPanel" CssClass="DialogTabControl">
                     <ContentTemplate>
                         <asp:Panel ID="Panel4" runat="server" CssClass="DialogTabPanelContent EditPartitionDialogTab" >
                             <div class="ServerPartitionDialogTabDescription">

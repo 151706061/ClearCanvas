@@ -50,14 +50,18 @@ namespace ClearCanvas.Enterprise.Common.Setup
 					// first import the tokens, since the default groups will likely depend on these tokens
 					if (cmdLine.ImportAuthorityTokens)
 					{
-						var addToGroups = string.IsNullOrEmpty(cmdLine.SysAdminGroup) ? new string[] { } : new[] { cmdLine.SysAdminGroup };
-						SetupHelper.ImportAuthorityTokens(addToGroups);
+						SetupHelper.ImportAuthorityTokens(new[] { BuiltInAuthorityGroups.Administrators.Name });
 					}
 
 					// import authority groups
 					if (cmdLine.ImportDefaultAuthorityGroups)
 					{
-						SetupHelper.ImportAuthorityGroups();
+						SetupHelper.ImportEmbeddedAuthorityGroups();
+					}
+
+					if(!string.IsNullOrEmpty(cmdLine.AuthorityGroupData))
+					{
+						SetupHelper.ImportAuthorityGroups(cmdLine.AuthorityGroupData);
 					}
 
 					// import settings groups
@@ -82,19 +86,24 @@ namespace ClearCanvas.Enterprise.Common.Setup
 
 		private static void MigrateSharedSettings(string previousExeConfigFilename)
 		{
-			foreach (var group in SettingsGroupDescriptor.ListInstalledSettingsGroups(false))
+			foreach (var group in SettingsGroupDescriptor.ListInstalledSettingsGroups())
 			{
-			    try
-			    {
-                    SettingsMigrator.MigrateSharedSettings(group, previousExeConfigFilename);
-			    }
-			    catch (Exception e)
-			    {
-			        //Failure to migrate a settings is not good enough reason to cause the whole app to fail.
-                    //Some of the viewer settings classes SHOULD actually fail to migrate in the context of the ImageServer.
-                    //
-                    Platform.Log(LogLevel.Warn, e, "Failed to migrate settings '{0}'", group.AssemblyQualifiedTypeName);
-			    }
+				try
+				{
+					SettingsMigrator.MigrateSharedSettings(group, previousExeConfigFilename);
+				}
+				catch (UnknownServiceException e)
+				{
+					//Failure to migrate a settings is not good enough reason to cause the whole app to fail.
+					//Some of the viewer settings classes SHOULD actually fail to migrate in the context of the ImageServer.
+					Platform.Log(LogLevel.Debug, e, "Failed to migrate settings '{0}'", group.AssemblyQualifiedTypeName);
+				}
+				catch (Exception e)
+				{
+					//Failure to migrate a settings is not good enough reason to cause the whole app to fail.
+					//Some of the viewer settings classes SHOULD actually fail to migrate in the context of the ImageServer.
+					Platform.Log(LogLevel.Warn, e, "Failed to migrate settings '{0}'", group.AssemblyQualifiedTypeName);
+				}
 			}
 		}
 
@@ -103,7 +112,7 @@ namespace ClearCanvas.Enterprise.Common.Setup
 		/// </summary>
 		private static void ImportSettingsGroups()
 		{
-			var groups = SettingsGroupDescriptor.ListInstalledSettingsGroups(true);
+			var groups = SettingsGroupDescriptor.ListInstalledSettingsGroups(SettingsGroupFilter.SupportEnterpriseStorage);
 
 			foreach (var g in groups)
 			{

@@ -24,17 +24,17 @@
 
 using System;
 using System.Collections.Generic;
+using System.Web;
 using System.Xml;
 using ClearCanvas.Common;
 using ClearCanvas.Enterprise.Core;
-using ClearCanvas.ImageServer.Common;
+using ClearCanvas.ImageServer.Core.Helpers;
 using ClearCanvas.ImageServer.Core.Process;
 using ClearCanvas.ImageServer.Model;
 using ClearCanvas.ImageServer.Model.Brokers;
 using ClearCanvas.ImageServer.Model.EntityBrokers;
 using ClearCanvas.ImageServer.Model.Parameters;
 using ClearCanvas.ImageServer.Web.Common.Data.Model;
-using ClearCanvas.ImageServer.Core;
 using ClearCanvas.ImageServer.Core.ModelExtensions;
 
 namespace ClearCanvas.ImageServer.Web.Common.Data
@@ -51,37 +51,37 @@ namespace ClearCanvas.ImageServer.Web.Common.Data
 
 		#region Static Public Methods
 
-		/// <summary>
+        /// <summary>
         /// Gets the <see cref="StudyStorageLocation"/> for the study associated with the specified <see cref="WorkQueue"/> item.
         /// </summary>
         /// <param name="item"></param>
         /// <returns></returns>
-		static public StudyStorageLocation GetLoadStorageLocation(WorkQueue item)
+        public static StudyStorageLocation GetLoadStorageLocation(WorkQueue item)
         {
 
-            IQueryStudyStorageLocation select = HttpContextData.Current.ReadContext.GetBroker<IQueryStudyStorageLocation>();
+			var select = HttpContext.Current.GetSharedPersistentContext().GetBroker<IQueryStudyStorageLocation>();
 
-        		StudyStorageLocationQueryParameters parms = new StudyStorageLocationQueryParameters();
-        		parms.StudyStorageKey = item.StudyStorageKey;
+            var parms = new StudyStorageLocationQueryParameters();
+            parms.StudyStorageKey = item.StudyStorageKey;
 
-        		IList<StudyStorageLocation> storages = select.Find(parms);
+            IList<StudyStorageLocation> storages = select.Find(parms);
 
-        		if (storages == null || storages.Count == 0)
-        		{
-        			Platform.Log(LogLevel.Error, "Unable to find storage location for WorkQueue item: {0}",
-        			             item.Key.ToString());
-        			throw new ApplicationException("Unable to find storage location for WorkQueue item.");
-        		}
+            if (storages == null || storages.Count == 0)
+            {
+                Platform.Log(LogLevel.Error, "Unable to find storage location for WorkQueue item: {0}",
+                             item.Key.ToString());
+                throw new ApplicationException("Unable to find storage location for WorkQueue item.");
+            }
 
-        		if (storages.Count > 1)
-        		{
-        			Platform.Log(LogLevel.Warn,
-        			             "WorkQueueController:LoadWritableStorageLocation: multiple study storage found for work queue item {0}",
-        			             item.Key.Key);
-        		}
+            if (storages.Count > 1)
+            {
+                Platform.Log(LogLevel.Warn,
+                             "WorkQueueController:LoadWritableStorageLocation: multiple study storage found for work queue item {0}",
+                             item.Key.Key);
+            }
 
-        		return storages[0];
-        	
+            return storages[0];
+
         }
 
         /// <summary>
@@ -133,7 +133,7 @@ namespace ClearCanvas.ImageServer.Web.Common.Data
                 /* nobody claimed it */
                 || (item.WorkQueueStatusEnum == WorkQueueStatusEnum.InProgress && String.IsNullOrEmpty(item.ProcessorID))
                 /* allow reset "stuck" items (except items that are InProgress)*/
-                || (!item.WorkQueueStatusEnum.Equals(WorkQueueStatusEnum.InProgress) && !ServerPlatform.IsActiveWorkQueue(item));
+                || (!item.WorkQueueStatusEnum.Equals(WorkQueueStatusEnum.InProgress) && !WorkQueueHelper.IsActiveWorkQueue(item));
 
         }
 
@@ -172,7 +172,7 @@ namespace ClearCanvas.ImageServer.Web.Common.Data
                  item.WorkQueueTypeEnum == WorkQueueTypeEnum.WebDeleteStudy)
 
 				/* allow deletes of "stuck" items (except items that are InProgress)*/
-                || (!item.WorkQueueStatusEnum.Equals(WorkQueueStatusEnum.InProgress) && !ServerPlatform.IsActiveWorkQueue(item));
+                || (!item.WorkQueueStatusEnum.Equals(WorkQueueStatusEnum.InProgress) && !WorkQueueHelper.IsActiveWorkQueue(item));
 		}
 
 
@@ -196,7 +196,7 @@ namespace ClearCanvas.ImageServer.Web.Common.Data
             {
                 IList<WorkQueue> list;
 
-                IWebQueryWorkQueue broker = HttpContextData.Current.ReadContext.GetBroker<IWebQueryWorkQueue>();
+                IWebQueryWorkQueue broker = HttpContext.Current.GetSharedPersistentContext().GetBroker<IWebQueryWorkQueue>();
                 list = broker.Find(parameters);
                 return list;
             }
@@ -212,7 +212,7 @@ namespace ClearCanvas.ImageServer.Web.Common.Data
             IList<WorkQueueInfo> workQueueInfo = new List<WorkQueueInfo>();
             
             WorkQueueProcessorIDsParameters parameters = new WorkQueueProcessorIDsParameters();
-            IWorkQueueProcessorIDs broker = HttpContextData.Current.ReadContext.GetBroker<IWorkQueueProcessorIDs>();
+            IWorkQueueProcessorIDs broker = HttpContext.Current.GetSharedPersistentContext().GetBroker<IWorkQueueProcessorIDs>();
             IList<WorkQueue> processorIDList = broker.Find(parameters);
 
             WorkQueueSelectCriteria criteria = new WorkQueueSelectCriteria();

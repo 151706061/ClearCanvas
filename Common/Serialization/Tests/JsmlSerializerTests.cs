@@ -27,7 +27,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Runtime.Serialization;
+using System.Threading;
 using System.Xml;
 using System.Text;
 using ClearCanvas.Common.Utilities;
@@ -168,7 +170,6 @@ namespace ClearCanvas.Common.Serialization.Tests
             }
 		}
 
-		/// </summary>
 		[DataContract]
 		class TestContract3
 		{
@@ -259,6 +260,12 @@ namespace ClearCanvas.Common.Serialization.Tests
 		public JsmlSerializerTests()
 		{
 			Platform.SetExtensionFactory(new UnitTestExtensionFactory());
+		}
+
+		[TestFixtureSetUp]
+		public void InitTest()
+		{
+			PolymorphicDataContractHook<TestPolyDataContractAttribute>.ClearKnownTypes();
 		}
 
 		[Test]
@@ -434,6 +441,42 @@ namespace ClearCanvas.Common.Serialization.Tests
 		}
 
 		[Test]
+		public void Test_Double_French()
+		{
+			var originalCulture = Thread.CurrentThread.CurrentCulture;
+			try
+			{
+				Thread.CurrentThread.CurrentCulture = CultureInfo.CreateSpecificCulture("fr-CA");
+				Test_Double();
+
+				Thread.CurrentThread.CurrentCulture = CultureInfo.CreateSpecificCulture("fr-FR");
+				Test_Double();
+			}
+			finally
+			{
+				Thread.CurrentThread.CurrentCulture = originalCulture;
+			}
+		}
+
+		[Test]
+		public void Test_Double_English()
+		{
+			var originalCulture = Thread.CurrentThread.CurrentCulture;
+			try
+			{
+				Thread.CurrentThread.CurrentCulture = CultureInfo.CreateSpecificCulture("en-CA");
+				Test_Double();
+
+				Thread.CurrentThread.CurrentCulture = CultureInfo.CreateSpecificCulture("en-US");
+				Test_Double();
+			}
+			finally
+			{
+				Thread.CurrentThread.CurrentCulture = originalCulture;
+			}
+		}
+
+		[Test]
 		public void Test_NullableDouble()
 		{
 			double? n = null;
@@ -462,6 +505,20 @@ namespace ClearCanvas.Common.Serialization.Tests
 		}
 
 		[Test]
+		public void Test_Bool_deserialize_case_insensitive()
+		{
+			DeserializeHelper(true, "<Tag>true</Tag>");
+			DeserializeHelper(true, "<Tag>True</Tag>");
+			DeserializeHelper(true, "<Tag>TRUE</Tag>");
+			DeserializeHelper(true, "<Tag>trUE</Tag>");
+
+			DeserializeHelper(false, "<Tag>false</Tag>");
+			DeserializeHelper(false, "<Tag>False</Tag>");
+			DeserializeHelper(false, "<Tag>FALSE</Tag>");
+			DeserializeHelper(false, "<Tag>fAlSe</Tag>");
+		}
+
+		[Test]
 		public void Test_Enum()
 		{
 			SerializeHelper(TestEnum.Enum1, string.Format("<Tag>{0}</Tag>", TestEnum.Enum1));
@@ -469,6 +526,18 @@ namespace ClearCanvas.Common.Serialization.Tests
 
 			SerializeHelper(TestEnum.Enum2, string.Format("<Tag>{0}</Tag>", TestEnum.Enum2));
 			DeserializeHelper(TestEnum.Enum2, string.Format("<Tag>{0}</Tag>", TestEnum.Enum2));
+		}
+
+		[Test]
+		public void Test_Enum_deserialize_case_insensitive()
+		{
+			DeserializeHelper(TestEnum.Enum1, "<Tag>enum1</Tag>");
+			DeserializeHelper(TestEnum.Enum1, "<Tag>ENUM1</Tag>");
+			DeserializeHelper(TestEnum.Enum1, "<Tag>eNUM1</Tag>");
+
+			DeserializeHelper(TestEnum.Enum2, "<Tag>enum2</Tag>");
+			DeserializeHelper(TestEnum.Enum2, "<Tag>ENUM2</Tag>");
+			DeserializeHelper(TestEnum.Enum2, "<Tag>eNuM2</Tag>");
 		}
 
 		[Test]
@@ -504,14 +573,29 @@ namespace ClearCanvas.Common.Serialization.Tests
 		{
 			var now = DateTime.Now;
 			var nowWithoutMilliseconds = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second);
-			DateTime? nullable = nowWithoutMilliseconds;
+			var nullable = (DateTime?)nowWithoutMilliseconds;
 
 			SerializeHelper(nullable, string.Format("<Tag>{0}</Tag>", DateTimeUtils.FormatISO(nullable.Value)));
 			DeserializeHelper(nullable, string.Format("<Tag>{0}</Tag>", DateTimeUtils.FormatISO(nullable.Value)));
+		}
 
-			nullable = null;
-			SerializeHelper(nullable, null);
-			DeserializeHelper(nullable, null);
+		[Test]
+		public void Test_TimeSpan()
+		{
+			var oneHour = new TimeSpan(1, 0, 0);
+
+			SerializeHelper(oneHour, string.Format("<Tag>{0}</Tag>", DateTimeUtils.FormatTimeSpan(oneHour)));
+			DeserializeHelper(oneHour, string.Format("<Tag>{0}</Tag>", DateTimeUtils.FormatTimeSpan(oneHour)));
+		}
+
+		[Test]
+		public void Test_NullableTimeSpan()
+		{
+			var oneHour = new TimeSpan(1, 0, 0);
+			TimeSpan? nullable = oneHour;
+
+			SerializeHelper(nullable, string.Format("<Tag>{0}</Tag>", DateTimeUtils.FormatTimeSpan(nullable.Value)));
+			DeserializeHelper(nullable, string.Format("<Tag>{0}</Tag>", DateTimeUtils.FormatTimeSpan(nullable.Value)));
 		}
 
 		[Test]
@@ -643,18 +727,6 @@ namespace ClearCanvas.Common.Serialization.Tests
 			SerializeHelper(intStrDictionary, "<Tag type=\"hash\">\r\n  <0>value</0>\r\n</Tag>");
 			DeserializeHelper(intStrDictionary, "<Tag type=\"hash\">\r\n  <0>value</0>\r\n</Tag>");
 			DeserializeHelper(intStrDictionary, "<Tag hash=\"true\">\r\n  <0>value</0>\r\n</Tag>");
-		}
-
-		[Test]
-		[ExpectedException(typeof(ArgumentException))]
-		public void Test_Dictionary_InvalidValueType()
-		{
-			// Only IDictionary<string, T>, where T is a JSML-serializable type, is supported.
-			var dictionary = new Dictionary<string, TimeSpan>();
-			dictionary["key"] = new TimeSpan(1, 0, 0);
-			SerializeHelper(dictionary, "<Tag type=\"hash\">\r\n  <key>01:00:00</key>\r\n</Tag>");
-			DeserializeHelper(dictionary, "<Tag type=\"hash\">\r\n  <key>01:00:00</key>\r\n</Tag>");
-			DeserializeHelper(dictionary, "<Tag hash=\"true\">\r\n  <key>01:00:00</key>\r\n</Tag>");
 		}
 
 		[Test]

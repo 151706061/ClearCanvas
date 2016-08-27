@@ -24,11 +24,10 @@
 
 #if UNIT_TESTS
 
-// ReSharper disable SuggestBaseTypeForParameter
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ClearCanvas.Common.Utilities
 {
@@ -44,7 +43,8 @@ namespace ClearCanvas.Common.Utilities
 	/// </remarks>
 	public class UnitTestExtensionFactory : IExtensionFactory, IDictionary<Type, Type>
 	{
-		private readonly Dictionary<Type, List<Type>> _extensionMap = new Dictionary<Type, List<Type>>();
+		private readonly Dictionary<Type, List<ExtensionDescriptor>> _extensionMap = new Dictionary<Type, List<ExtensionDescriptor>>();
+		private const string _exceptionMustImplementInterface = "Extension point class must implement IExtensionPoint";
 
 		/// <summary>
 		/// Instantiates an empty <see cref="UnitTestExtensionFactory"/>.
@@ -54,20 +54,28 @@ namespace ClearCanvas.Common.Utilities
 		/// <summary>
 		/// Instantiates an <see cref="UnitTestExtensionFactory"/> with the provided <paramref name="extensionMap">extensions map</paramref>.
 		/// </summary>
-		public UnitTestExtensionFactory(IDictionary<Type, IEnumerable<Type>> extensionMap)
+		public UnitTestExtensionFactory(IEnumerable<KeyValuePair<Type, IEnumerable<Type>>> extensionMap)
 		{
-			foreach (var entry in extensionMap)
-				foreach (var type in entry.Value)
-					Define(entry.Key, type);
+			if (extensionMap != null)
+			{
+				foreach (var entry in extensionMap)
+				{
+					foreach (var type in entry.Value)
+						Define(entry.Key, type);
+				}
+			}
 		}
 
 		/// <summary>
 		/// Instantiates an <see cref="UnitTestExtensionFactory"/> with the provided <paramref name="extensionMap">extensions map</paramref>.
 		/// </summary>
-		public UnitTestExtensionFactory(IDictionary<Type, Type> extensionMap)
+		public UnitTestExtensionFactory(IEnumerable<KeyValuePair<Type, Type>> extensionMap)
 		{
-			foreach (var entry in extensionMap)
-				Define(entry.Key, entry.Value);
+			if (extensionMap != null)
+			{
+				foreach (var entry in extensionMap)
+					Define(entry.Key, entry.Value);
+			}
 		}
 
 		/// <summary>
@@ -78,11 +86,26 @@ namespace ClearCanvas.Common.Utilities
 		public void Define(Type extensionPoint, Type extension)
 		{
 			if (!typeof (IExtensionPoint).IsAssignableFrom(extensionPoint))
-				throw new ArgumentException("Extension point class must implement IExtensionPoint", "extensionPoint");
+				throw new ArgumentException(_exceptionMustImplementInterface, "extensionPoint");
 
 			if (!_extensionMap.ContainsKey(extensionPoint))
-				_extensionMap.Add(extensionPoint, new List<Type>());
-			_extensionMap[extensionPoint].Add(extension);
+				_extensionMap.Add(extensionPoint, new List<ExtensionDescriptor>());
+			_extensionMap[extensionPoint].Add(new ExtensionDescriptor(extensionPoint, extension));
+		}
+
+		/// <summary>
+		/// Defines a factory method as an extension of the specified <see cref="IExtensionPoint"/> type.
+		/// </summary>
+		/// <param name="extensionPoint">The type of the <see cref="IExtensionPoint"/>.</param>
+		/// <param name="factoryMethod">The factory method to create the extension.</param>
+		public void Define<T>(Type extensionPoint, Func<T> factoryMethod)
+		{
+			if (!typeof (IExtensionPoint).IsAssignableFrom(extensionPoint))
+				throw new ArgumentException(_exceptionMustImplementInterface, "extensionPoint");
+
+			if (!_extensionMap.ContainsKey(extensionPoint))
+				_extensionMap.Add(extensionPoint, new List<ExtensionDescriptor>());
+			_extensionMap[extensionPoint].Add(new ExtensionDescriptor(extensionPoint, typeof (T), () => (object) factoryMethod.Invoke()));
 		}
 
 		/// <summary>
@@ -93,7 +116,7 @@ namespace ClearCanvas.Common.Utilities
 		public bool UndefineAll(Type extensionPoint)
 		{
 			if (!typeof (IExtensionPoint).IsAssignableFrom(extensionPoint))
-				throw new ArgumentException("Extension point class must implement IExtensionPoint", "extensionPoint");
+				throw new ArgumentException(_exceptionMustImplementInterface, "extensionPoint");
 			return _extensionMap.Remove(extensionPoint);
 		}
 
@@ -105,7 +128,7 @@ namespace ClearCanvas.Common.Utilities
 		public bool HasExtensions(Type extensionPoint)
 		{
 			if (!typeof (IExtensionPoint).IsAssignableFrom(extensionPoint))
-				throw new ArgumentException("Extension point class must implement IExtensionPoint", "extensionPoint");
+				throw new ArgumentException(_exceptionMustImplementInterface, "extensionPoint");
 			return _extensionMap.ContainsKey(extensionPoint);
 		}
 
@@ -129,10 +152,9 @@ namespace ClearCanvas.Common.Utilities
 		/// <returns></returns>
 		public virtual object[] CreateExtensions(ExtensionPoint extensionPoint, ExtensionFilter filter, bool justOne)
 		{
-			var extensionInfos = ListExtensions(extensionPoint, filter);
-			if (justOne && extensionInfos.Length > 1)
-				extensionInfos = new[] {extensionInfos[0]};
-			return CollectionUtils.Map<ExtensionInfo, object>(extensionInfos, extensionInfo => Activator.CreateInstance(extensionInfo.ExtensionClass)).ToArray();
+			var extensions = ListExtensionsCore(extensionPoint, filter);
+			if (justOne) extensions = extensions.Take(1);
+			return extensions.Select(x => x.CreateInstance()).ToArray();
 		}
 
 		/// <summary>
@@ -144,21 +166,21 @@ namespace ClearCanvas.Common.Utilities
 		/// <returns></returns>
 		public virtual ExtensionInfo[] ListExtensions(ExtensionPoint extensionPoint, ExtensionFilter filter)
 		{
+			return ListExtensionsCore(extensionPoint, filter).Select(x => x.Info).ToArray();
+		}
+
+		private IEnumerable<ExtensionDescriptor> ListExtensionsCore(ExtensionPoint extensionPoint, ExtensionFilter filter)
+		{
 			if (extensionPoint == null)
 				throw new ArgumentNullException("extensionPoint");
 
 			var extensionPointType = extensionPoint.GetType();
 			if (!_extensionMap.ContainsKey(extensionPointType))
-				return new ExtensionInfo[0];
+				return Enumerable.Empty<ExtensionDescriptor>();
 
-			var extensions = new List<ExtensionInfo>();
-			foreach (var extensionType  in _extensionMap[extensionPointType])
-			{
-				var extensionInfo = new ExtensionInfo(extensionType, extensionPointType, extensionType.Name, extensionType.AssemblyQualifiedName, true);
-				if (filter == null || filter.Test(extensionInfo))
-					extensions.Add(extensionInfo);
-			}
-			return extensions.ToArray();
+			var extensions = _extensionMap[extensionPointType].Select(x => x);
+			if (filter != null) extensions = extensions.Where(x => filter.Test(x.Info));
+			return extensions;
 		}
 
 		#endregion
@@ -193,11 +215,11 @@ namespace ClearCanvas.Common.Utilities
 
 		bool IDictionary<Type, Type>.TryGetValue(Type key, out Type value)
 		{
-			List<Type> list;
+			List<ExtensionDescriptor> list;
 			bool result = _extensionMap.TryGetValue(key, out list);
 			if (result)
 			{
-				value = CollectionUtils.FirstElement(list);
+				value = list.Select(x => x.Type).FirstOrDefault();
 				return value != null;
 			}
 			value = null;
@@ -206,21 +228,13 @@ namespace ClearCanvas.Common.Utilities
 
 		ICollection<Type> IDictionary<Type, Type>.Values
 		{
-			get
-			{
-				var list = new List<Type>();
-				foreach (var value in _extensionMap.Values)
-				{
-					list.AddRange(value);
-				}
-				return list.AsReadOnly();
-			}
+			get { return _extensionMap.Values.SelectMany(x => x).Select(x => x.Type).ToList().AsReadOnly(); }
 		}
 
 		Type IDictionary<Type, Type>.this[Type key]
 		{
-			get { throw new NotImplementedException(); }
-			set { throw new NotImplementedException(); }
+			get { throw new NotSupportedException(); }
+			set { throw new NotSupportedException(); }
 		}
 
 		#endregion
@@ -244,7 +258,7 @@ namespace ClearCanvas.Common.Utilities
 
 		void ICollection<KeyValuePair<Type, Type>>.CopyTo(KeyValuePair<Type, Type>[] array, int arrayIndex)
 		{
-			throw new NotImplementedException();
+			throw new NotSupportedException();
 		}
 
 		int ICollection<KeyValuePair<Type, Type>>.Count
@@ -259,16 +273,16 @@ namespace ClearCanvas.Common.Utilities
 
 		bool ICollection<KeyValuePair<Type, Type>>.Remove(KeyValuePair<Type, Type> item)
 		{
-			throw new NotImplementedException();
+			throw new NotSupportedException();
 		}
 
 		#endregion
 
 		#region IEnumerable<KeyValuePair<Type,Type>> Members
 
-		IEnumerator<KeyValuePair<Type, Type>> IEnumerable<KeyValuePair<Type, Type>>.GetEnumerator()
+		public IEnumerator<KeyValuePair<Type, Type>> GetEnumerator()
 		{
-			throw new NotImplementedException();
+			return _extensionMap.SelectMany(x => x.Value.Select(y => new KeyValuePair<Type, Type>(x.Key, y.Type))).GetEnumerator();
 		}
 
 		#endregion
@@ -277,12 +291,44 @@ namespace ClearCanvas.Common.Utilities
 
 		IEnumerator IEnumerable.GetEnumerator()
 		{
-			throw new NotImplementedException();
+			return GetEnumerator();
+		}
+
+		#endregion
+
+		#region ExtensionDescriptor Class
+
+		private class ExtensionDescriptor
+		{
+			private readonly Type _extensionType;
+			private readonly Func<object> _creator;
+			private readonly ExtensionInfo _info;
+
+			public ExtensionDescriptor(Type extensionPoint, Type extension, Func<object> creator = null)
+			{
+				_info = new ExtensionInfo(extension, extensionPoint, extension.Name, extension.AssemblyQualifiedName, true);
+				_extensionType = extension;
+				_creator = creator;
+			}
+
+			public Type Type
+			{
+				get { return _extensionType; }
+			}
+
+			public ExtensionInfo Info
+			{
+				get { return _info; }
+			}
+
+			public object CreateInstance()
+			{
+				return _creator != null ? _creator.Invoke() : Activator.CreateInstance(_extensionType);
+			}
 		}
 
 		#endregion
 	}
 }
 
-// ReSharper restore SuggestBaseTypeForParameter
 #endif

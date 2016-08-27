@@ -25,6 +25,7 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using ClearCanvas.Dicom.IO;
 
@@ -48,6 +49,17 @@ namespace ClearCanvas.Dicom
 
 		internal abstract override DicomAttribute Copy(bool copyBinary);
 
+		/// <summary>
+		/// Creates a <see cref="Stream"/> which maps to a view of this <see cref="DicomAttributeBinary"/>, and can be used to read or write to the underlying data.
+		/// </summary>
+		/// <remarks>
+		/// <para>
+		/// Each view <see cref="Stream"/> created by this method keeps track of position independently of all other views, although the byte stream is ultimately the same.
+		/// In other words, modifying one view will cause those changes to appear in other views, but each view is still guaranteed that the <see cref="Stream.Position"/>
+		/// will maintain the appropriate state regardless of external changes.
+		/// </para>
+		/// </remarks>
+		/// <returns>A new instance of a <see cref="Stream"/> which maps to a view of this <see cref="DicomAttributeBinary"/>.</returns>
 		public abstract Stream AsStream();
 	}
 
@@ -77,8 +89,6 @@ namespace ClearCanvas.Dicom
 		{
 			_reference = reference;
 			_values = null;
-
-			SetStreamLength();
 		}
 
 		internal DicomAttributeBinary(DicomTag tag, ByteBuffer item)
@@ -89,8 +99,6 @@ namespace ClearCanvas.Dicom
 
 			_values = new DicomAttributeBinaryData<T>(item);
 			_reference = null;
-
-			SetStreamLength();
 		}
 
 		internal DicomAttributeBinary(DicomAttributeBinary<T> attrib)
@@ -105,13 +113,32 @@ namespace ClearCanvas.Dicom
 			{
 				_values = attrib._values != null ? new DicomAttributeBinaryData<T>(attrib._values) : null;
 			}
-
-			SetStreamLength();
 		}
 
 		#endregion
 
 		#region Properties
+
+		public override sealed long Count
+		{
+			get
+			{
+				if (_reference != null) return _reference.Length/Tag.VR.UnitSize;
+				return _values != null ? _values.Count : 0;
+			}
+			protected set { throw new NotSupportedException(); }
+		}
+
+		public override sealed uint StreamLength
+		{
+			get
+			{
+				// StreamLength always returns the length of the stream padded to an even number of bytes
+				if (_reference != null) return _reference.Length + (_reference.Length%2);
+				return _values != null ? (uint) (_values.Length + (_values.Length%2)) : 0;
+			}
+			protected set { throw new NotSupportedException(); }
+		}
 
 		/// <summary>
 		/// Gets or sets the number style used in parsing and formatting the values of the attribute.
@@ -137,7 +164,6 @@ namespace ClearCanvas.Dicom
 				{
 					_values = Load();
 					_reference = null;
-					SetStreamLength();
 				}
 				return _values;
 			}
@@ -170,38 +196,17 @@ namespace ClearCanvas.Dicom
 
 		#region Private Methods
 
-		protected void SetStreamLength()
-		{
-			if (_reference != null)
-			{
-				Count = _reference.Length/Tag.VR.UnitSize;
-				StreamLength = _reference.Length;
-			}
-			else if (_values == null)
-			{
-				Count = 0;
-				StreamLength = 0;
-			}
-			else
-			{
-				Count = _values.Count;
-				StreamLength = (uint) _values.Length;
-			}
-		}
-
 		protected void AppendValue(T val)
 		{
 			if (Data == null)
 				Data = new DicomAttributeBinaryData<T>();
 			Data.AppendValue(val);
-
-			SetStreamLength();
 		}
 
 		private DicomAttributeBinaryData<T> Load()
 		{
 			ByteBuffer bb;
-			using (FileStream fs = File.OpenRead(_reference.Filename))
+			using (var fs = _reference.StreamOpener.Open())
 			{
 				fs.Seek(_reference.Offset, SeekOrigin.Begin);
 
@@ -218,12 +223,6 @@ namespace ClearCanvas.Dicom
 
 		internal override sealed uint CalculateWriteLength(TransferSyntax syntax, DicomWriteOptions options)
 		{
-			return CalculateWriteLength(syntax, options, _values);
-		}
-
-		internal virtual uint CalculateWriteLength(TransferSyntax syntax, DicomWriteOptions options, DicomAttributeBinaryData<T> values)
-		{
-			// for some reason, OB attribute has a special override of this that isn't just a special case of the base implementation
 			return base.CalculateWriteLength(syntax, options);
 		}
 
@@ -249,20 +248,19 @@ namespace ClearCanvas.Dicom
 		{
 			_reference = null;
 			_values = new DicomAttributeBinaryData<T>();
-			SetStreamLength();
 		}
 
 		public override void SetEmptyValue()
 		{
 			_reference = null;
 			_values = null;
-			SetStreamLength();
 		}
 
 		public override Stream AsStream()
 		{
 			var data = Data;
-			return data != null ? data.AsStream() : null;
+			if (data == null) Data = data = new DicomAttributeBinaryData<T>();
+			return data.AsStream();
 		}
 
 		internal override ByteBuffer GetByteBuffer(TransferSyntax syntax, String specificCharacterSet)
@@ -270,13 +268,22 @@ namespace ClearCanvas.Dicom
 			ByteBuffer bb;
 			if (_reference != null)
 			{
-				using (FileStream fs = File.OpenRead(_reference.Filename))
+				using (var fs = _reference.StreamOpener.Open())
 				{
 					fs.Seek(_reference.Offset, SeekOrigin.Begin);
 
+					// Note: the length passed in the constructor is used for determinining whether "highCapacityMode" is used.
+					// It is NOT used to allocate the internal buffer.
 					bb = new ByteBuffer(_reference.Length);
 					bb.CopyFrom(fs, (int) _reference.Length);
 					fs.Close();
+				}
+
+				if (_reference.Length%2 == 1)
+				{
+					// Note: Because the buffer is initialized using ByteBuffer.CopyFrom(), internal Stream object is created to store the data. Calling Append() will only append to the stream.
+					// If the buffer is initialized in other ways, calling Append() may cause an extra copy of the data created.
+					bb.Append(new byte[1], 0, 1);
 				}
 
 				if (syntax.Endian != _reference.Endian)
@@ -284,7 +291,7 @@ namespace ClearCanvas.Dicom
 			}
 			else if (_values != null)
 			{
-				bb = _values.CreateByteBuffer(syntax.Endian);
+				bb = _values.CreateEvenLengthByteBuffer(syntax.Endian);
 
 				if (syntax.Endian != ByteBuffer.LocalMachineEndian)
 					bb.Swap(Tag.VR.UnitSize);
@@ -362,18 +369,14 @@ namespace ClearCanvas.Dicom
 			if (string.IsNullOrEmpty(stringValue))
 			{
 				Data = new DicomAttributeBinaryData<T>();
-				SetStreamLength();
 				return;
 			}
 
 			String[] stringValues = stringValue.Split(new[] {'\\'});
-			Data = new DicomAttributeBinaryData<T>(stringValues.Length);
+			var data = new DicomAttributeBinaryData<T>(stringValues.Length);
 			for (int index = 0; index < stringValues.Length; index++)
-			{
-				Data[index] = ParseNumber(stringValues[index]);
-			}
-
-			SetStreamLength();
+				data[index] = ParseNumber(stringValues[index]);
+			Data = data; // set after, so that we don't get partial state due to a parse exception
 		}
 
 		/// <summary>
@@ -429,7 +432,6 @@ namespace ClearCanvas.Dicom
 			else
 			{
 				Data[index] = value;
-				SetStreamLength();
 			}
 		}
 
@@ -441,6 +443,18 @@ namespace ClearCanvas.Dicom
 
 			if (_values == null)
 				return String.Empty;
+
+			// TODO: this is horrible API design - accidentally putting a watch on a large binary attribute (e.g. pixel data of a mammo) will kill the IDE
+			// Put that kind of functionality in a GetStringValue() method (to match SetStringValue() method), and let ToString() follow the MSDN recommended guidelines:
+			// * The returned string should be friendly and readable by humans.
+			// * The returned string should uniquely identify the value of the object instance.
+			// * The returned string should be as short as possible so that it is suitable for display by a debugger.
+			// * Your ToString override should not return String.Empty or a null string.
+			// * Your ToString override should not throw an exception.
+			// * If the string representation of an instance is culture-sensitive or can be formatted in multiple ways, implement the IFormattable interface.
+			// * If the returned string includes sensitive information, you should first demand an appropriate permission. If the demand succeeds, you can return the sensitive information; otherwise, you should return a string that excludes the sensitive information.
+			// * Your ToString override should have no observable side effects to avoid complications in debugging. For example, a call to the ToString method should not change the value of instance fields.
+			// * If your type implements a parsing method (or Parse or TryParse method, a constructor, or some other static method that instantiates an instance of the type from a string), you should ensure that the string returned by the ToString method can be converted to an object instance. 
 
 			StringBuilder val = null;
 			foreach (T index in _values)
@@ -483,7 +497,6 @@ namespace ClearCanvas.Dicom
 				{
 					// JY (2012-12-06): if value is NULL, always null the data as a non-overridable behaviour
 					Data = null;
-					SetStreamLength();
 					return;
 				}
 
@@ -498,7 +511,6 @@ namespace ClearCanvas.Dicom
 					{
 						var parsedValue = ParseNumber(value.ToString(), CultureInfo.CurrentCulture);
 						Data = new DicomAttributeBinaryData<T>(new[] {parsedValue}, false);
-						SetStreamLength();
 					}
 					catch (Exception)
 					{
@@ -513,18 +525,15 @@ namespace ClearCanvas.Dicom
 			if (value is T[])
 			{
 				Data = new DicomAttributeBinaryData<T>((T[]) value);
-				SetStreamLength();
 			}
 			else if (value is T)
 			{
 				Data = new DicomAttributeBinaryData<T>(1);
 				Data.SetValue(0, (T) value);
-				SetStreamLength();
 			}
 			else if (value is string)
 			{
 				SetStringValue((string) value);
-				SetStreamLength();
 			}
 			else
 			{
@@ -573,8 +582,6 @@ namespace ClearCanvas.Dicom
 				Buffer.BlockCopy(buffer, i*tag.VR.UnitSize + 2, values, i*tag.VR.UnitSize, 2);
 			}
 			Data = new DicomAttributeBinaryData<uint>(values, false);
-
-			SetStreamLength();
 		}
 
 		internal DicomAttributeAT(DicomAttributeAT attrib)
@@ -1394,7 +1401,6 @@ namespace ClearCanvas.Dicom
 			if (values != null)
 			{
 				Data = new DicomAttributeBinaryData<byte>(values);
-				SetStreamLength();
 				return true;
 			}
 			return false;
@@ -1406,7 +1412,7 @@ namespace ClearCanvas.Dicom
 				throw new DicomDataException("Null values invalid for OB VR");
 
 			byte parseVal;
-			if (! byte.TryParse(val.Trim(), NumberStyle, culture, out parseVal))
+			if (!byte.TryParse(val.Trim(), NumberStyle, culture, out parseVal))
 				throw new DicomDataException(String.Format("Invalid byte format value for tag {0}: {1}", Tag, val));
 			return parseVal;
 		}
@@ -1443,24 +1449,84 @@ namespace ClearCanvas.Dicom
 			return Data.CompareValues(other.Data);
 		}
 
-		internal override uint CalculateWriteLength(TransferSyntax syntax, DicomWriteOptions options, DicomAttributeBinaryData<byte> values)
+		#endregion
+	}
+
+	#endregion
+
+	#region DicomAttributeOD
+
+	/// <summary>
+	/// <see cref="DicomAttributeBinary"/> derived class for storing OD value representation tags.
+	/// </summary>
+	public class DicomAttributeOD : DicomAttributeBinary<double>
+	{
+		public DicomAttributeOD(uint tag)
+			: base(tag) {}
+
+		public DicomAttributeOD(DicomTag tag)
+			: base(tag)
 		{
-			uint length = 0;
-			length += 4; // element tag
-			if (syntax.ExplicitVr)
+			if (!tag.VR.Equals(DicomVr.ODvr)
+			    && !tag.MultiVR)
+				throw new DicomException(SR.InvalidVR);
+		}
+
+		internal DicomAttributeOD(DicomTag tag, ByteBuffer item)
+			: base(tag, item) {}
+
+		internal DicomAttributeOD(DicomAttributeOD attrib)
+			: base(attrib) {}
+
+		internal DicomAttributeOD(DicomTag tag, FileReference reference)
+			: base(tag, reference) {}
+
+		#region Abstract Method Implementation
+
+		public override string ToString()
+		{
+			return Tag + " of length " + base.StreamLength;
+		}
+
+		public override DicomAttribute Copy()
+		{
+			return new DicomAttributeOD(this);
+		}
+
+		internal override DicomAttribute Copy(bool copyBinary)
+		{
+			return new DicomAttributeOD(this);
+		}
+
+		protected override bool SetValuesCore(object value)
+		{
+			if (value is double[])
 			{
-				length += 2; // vr
-				length += 6; // length
+				Data = new DicomAttributeBinaryData<double>((double[]) value);
+				return true;
 			}
-			else
+			if (value is float[])
 			{
-				length += 4; // length
+				Data = new DicomAttributeBinaryData<double>(((float[]) value).Cast<double>().ToArray(), false);
+				return true;
 			}
-			if (values != null)
-			{
-				length += (uint) values.Length;
-			}
-			return length;
+			return false;
+		}
+
+		protected override double ParseNumber(string val, CultureInfo culture)
+		{
+			if (string.IsNullOrEmpty(val))
+				throw new DicomDataException("Null values invalid for OD VR");
+
+			double parseVal;
+			if (!double.TryParse(val.Trim(), NumberStyle, culture, out parseVal))
+				throw new DicomDataException(String.Format("Invalid double format value for tag {0}: {1}", Tag, val));
+			return parseVal;
+		}
+
+		protected override string FormatNumber(double val, CultureInfo culture)
+		{
+			return val.ToString(culture);
 		}
 
 		#endregion
@@ -1518,7 +1584,6 @@ namespace ClearCanvas.Dicom
 			if (values != null)
 			{
 				Data = new DicomAttributeBinaryData<float>(values);
-				SetStreamLength();
 				return true;
 			}
 			return false;
@@ -1594,7 +1659,6 @@ namespace ClearCanvas.Dicom
 			if (value is byte[])
 			{
 				Data = new DicomAttributeBinaryData<byte>((byte[]) value);
-				SetStreamLength();
 				return true;
 			}
 			else if (value is ushort[])
@@ -1603,7 +1667,6 @@ namespace ClearCanvas.Dicom
 				var buffer = new byte[values.Length*Tag.VR.UnitSize];
 				Buffer.BlockCopy(values, 0, buffer, 0, buffer.Length);
 				Data = new DicomAttributeBinaryData<byte>(buffer, false);
-				SetStreamLength();
 			}
 			else if (value is short[])
 			{
@@ -1611,7 +1674,6 @@ namespace ClearCanvas.Dicom
 				var buffer = new byte[values.Length*Tag.VR.UnitSize];
 				Buffer.BlockCopy(values, 0, buffer, 0, buffer.Length);
 				Data = new DicomAttributeBinaryData<byte>(buffer, false);
-				SetStreamLength();
 			}
 			return false;
 		}
@@ -2528,7 +2590,7 @@ namespace ClearCanvas.Dicom
 				throw new DicomDataException("Null values invalid for UL VR");
 
 			uint parseVal;
-			if (! uint.TryParse(val.Trim(), NumberStyle, culture, out parseVal))
+			if (!uint.TryParse(val.Trim(), NumberStyle, culture, out parseVal))
 				throw new DicomDataException(String.Format("Invalid uint format value for tag {0}: {1}", Tag, val));
 			return parseVal;
 		}
@@ -2904,7 +2966,6 @@ namespace ClearCanvas.Dicom
 			: base(tag)
 		{
 			Data = new DicomAttributeBinaryData<byte>(item);
-			SetStreamLength();
 		}
 
 		internal DicomAttributeUN(DicomAttributeUN attrib)
@@ -2935,7 +2996,6 @@ namespace ClearCanvas.Dicom
 			if (values != null)
 			{
 				Data = new DicomAttributeBinaryData<byte>(values);
-				SetStreamLength();
 				return true;
 			}
 			return false;
@@ -2962,7 +3022,7 @@ namespace ClearCanvas.Dicom
 			ByteBuffer bb;
 			if (Reference != null)
 			{
-				using (FileStream fs = File.OpenRead(Reference.Filename))
+				using (var fs = Reference.StreamOpener.Open())
 				{
 					fs.Seek(Reference.Offset, SeekOrigin.Begin);
 
@@ -2970,15 +3030,21 @@ namespace ClearCanvas.Dicom
 					bb.CopyFrom(fs, (int) Reference.Length);
 					fs.Close();
 				}
+
+				// Note: Because the buffer is initialized using ByteBuffer.CopyFrom(), internal Stream object is created to store the data. Calling Append() will only append to the stream.
+				// If the buffer is initialized in other ways, calling Append() may cause an extra copy of the data created.
+				if (Reference.Length%2 == 1)
+					bb.Append(new byte[1], 0, 1);
 			}
 			else if (Data != null)
 			{
-				bb = Data.CreateByteBuffer(syntax.Endian);
+				bb = Data.CreateEvenLengthByteBuffer(syntax.Endian);
 			}
 			else
 			{
 				bb = new ByteBuffer(syntax.Endian);
 			}
+
 			return bb;
 		}
 

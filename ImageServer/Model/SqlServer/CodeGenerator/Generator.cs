@@ -44,7 +44,7 @@ namespace ClearCanvas.ImageServer.Model.SqlServer.CodeGenerator
             private readonly string _variableName;
             private readonly string _databaseColumnName;
             
-            public Column(string name, string type)
+            public Column(string name, string type, bool isNullable=false)
             {
                 _columnName = name.Replace("GUID", "Key");
                 _variableName = String.Format("_{0}{1}", _columnName.Substring(0, 1).ToLower(), _columnName.Substring(1));
@@ -65,7 +65,7 @@ namespace ClearCanvas.ImageServer.Model.SqlServer.CodeGenerator
                 else if (type.Equals("int"))
                     _columnType = typeof(int);
                 else if (type.Equals("datetime"))
-                    _columnType = typeof(DateTime);
+					_columnType = isNullable? typeof(DateTime?):typeof(DateTime);
                 else if (type.Equals("xml"))
                     _columnType = typeof(XmlDocument);
                 else if (type.Equals("decimal"))
@@ -88,6 +88,14 @@ namespace ClearCanvas.ImageServer.Model.SqlServer.CodeGenerator
             {
                 get { return _columnType; }
             }
+
+	        public string DeclaringType
+	        {
+		        get
+		        {
+					return ColumnType.IsGenericType? ColumnType.GetGenericArguments()[0].Name + "?" : ColumnType.Name;
+		        }
+	        }
 
             public string VariableName
             {
@@ -201,11 +209,11 @@ namespace ClearCanvas.ImageServer.Model.SqlServer.CodeGenerator
 
                             DataColumn colColumnName = dt.Columns["COLUMN_NAME"];
                             DataColumn colColumnType = dt.Columns["DATA_TYPE"];
-
+	                        var isNullable = dt.Columns["IS_NULLABLE"];
                             foreach (DataRow row2 in dt.Rows)
                             {
                                 table.Columns.Add(
-                                    new Column(row2[colColumnName].ToString(), row2[colColumnType].ToString()));
+									new Column(row2[colColumnName].ToString(), row2[colColumnType].ToString(), row2[isNullable].ToString().ToUpper()=="YES"));
                             }
 
                             TableList.Add(table);
@@ -224,7 +232,7 @@ namespace ClearCanvas.ImageServer.Model.SqlServer.CodeGenerator
             writer.WriteLine("");
             if (Proprietary)
             {
-                writer.WriteLine("// Copyright (c) 2011, ClearCanvas Inc.");
+                writer.WriteLine("// Copyright (c) 2013, ClearCanvas Inc.");
                 writer.WriteLine("// All rights reserved.");
                 writer.WriteLine("// http://www.clearcanvas.ca");
                 writer.WriteLine("//");
@@ -233,12 +241,25 @@ namespace ClearCanvas.ImageServer.Model.SqlServer.CodeGenerator
             }
             else
             {
-                writer.WriteLine("// Copyright (c) 2011, ClearCanvas Inc.");
+                writer.WriteLine("// Copyright (c) 2013, ClearCanvas Inc.");
                 writer.WriteLine("// All rights reserved.");
                 writer.WriteLine("// http://www.clearcanvas.ca");
                 writer.WriteLine("//");
-                writer.WriteLine("// This software is licensed under the Open Software License v3.0.");
-                writer.WriteLine("// For the complete license, see http://www.clearcanvas.ca/OSLv3.0//");
+                writer.WriteLine("// This file is part of the ClearCanvas RIS/PACS open source project.");
+                writer.WriteLine("//");
+                writer.WriteLine("// The ClearCanvas RIS/PACS open source project is free software: you can");
+                writer.WriteLine("// redistribute it and/or modify it under the terms of the GNU General Public");
+                writer.WriteLine("// License as published by the Free Software Foundation, either version 3 of the");
+                writer.WriteLine("// License, or (at your option) any later version.");
+                writer.WriteLine("//");
+                writer.WriteLine("// The ClearCanvas RIS/PACS open source project is distributed in the hope that it");
+                writer.WriteLine("// will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of");
+                writer.WriteLine("// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General");
+                writer.WriteLine("// Public License for more details.");
+                writer.WriteLine("//");
+                writer.WriteLine("// You should have received a copy of the GNU General Public License along with");
+                writer.WriteLine("// the ClearCanvas RIS/PACS open source project.  If not, see");
+                writer.WriteLine("// <http://www.gnu.org/licenses/>.");
             }
             writer.WriteLine("");
             writer.WriteLine("#endregion");
@@ -479,6 +500,7 @@ namespace ClearCanvas.ImageServer.Model.SqlServer.CodeGenerator
                 writer.WriteLine("    using ClearCanvas.Dicom;");
             writer.WriteLine("    using ClearCanvas.Enterprise.Core;");
             writer.WriteLine("    using ClearCanvas.ImageServer.Enterprise;");
+            writer.WriteLine("    using ClearCanvas.ImageServer.Enterprise.Command;");
             writer.WriteLine("    using {0};", EntityInterfaceNamespace);
             writer.WriteLine("");
 
@@ -497,7 +519,7 @@ namespace ClearCanvas.ImageServer.Model.SqlServer.CodeGenerator
                     if (col.ColumnName.EndsWith("Enum"))
                         writer.WriteLine("            {0}{1} {2}_", comma, col.ColumnName, col.VariableName);
                     else
-                        writer.WriteLine("            {0}{1} {2}_", comma, col.ColumnType.Name, col.VariableName);
+						writer.WriteLine("            {0}{1} {2}_", comma, col.DeclaringType, col.VariableName);
 
                     comma = ',';
                 }
@@ -535,14 +557,14 @@ namespace ClearCanvas.ImageServer.Model.SqlServer.CodeGenerator
                     }
                     else if (col.ColumnType == typeof(XmlDocument))
                     {
-                        writer.WriteLine("        public {0} {1}", col.ColumnType.Name, col.ColumnName);
+						writer.WriteLine("        public {0} {1}", col.DeclaringType, col.ColumnName);
                         writer.WriteLine("        {{ get {{ return _{0}; }} set {{ _{0} = value; }} }}", col.ColumnName);
                         writer.WriteLine("        [NonSerialized]");
                         writer.WriteLine("        private XmlDocument _{0};", col.ColumnName);
                     }
                     else
                     {
-                        writer.WriteLine("        public {0} {1}", col.ColumnType.Name, col.ColumnName);
+						writer.WriteLine("        public {0} {1}", col.DeclaringType, col.ColumnName);
                         writer.WriteLine("        { get; set; }");
                     }
                 }
@@ -552,9 +574,9 @@ namespace ClearCanvas.ImageServer.Model.SqlServer.CodeGenerator
             writer.WriteLine("        #region Static Methods");
             writer.WriteLine("        static public {0} Load(ServerEntityKey key)", table.TableName);
             writer.WriteLine("        {");
-            writer.WriteLine("            using (var read = PersistentStoreRegistry.GetDefaultStore().OpenReadContext())");
+            writer.WriteLine("            using (var context = new ServerExecutionContext())");
             writer.WriteLine("            {");
-            writer.WriteLine("                return Load(read, key);");
+            writer.WriteLine("                return Load(context.ReadContext, key);");
             writer.WriteLine("            }");
             writer.WriteLine("        }");
             writer.WriteLine("        static public {0} Load(IPersistenceContext read, ServerEntityKey key)", table.TableName);
@@ -626,7 +648,7 @@ namespace ClearCanvas.ImageServer.Model.SqlServer.CodeGenerator
             {
                 if (!col.ColumnName.Equals("Key"))
                 {
-                    string colType = col.ColumnName.EndsWith("Enum") ? col.ColumnName : col.ColumnType.Name;
+					string colType = col.ColumnName.EndsWith("Enum") ? col.ColumnName : col.DeclaringType;
                     string colName = col.DatabaseColumnName;
                     writer.WriteLine("        [EntityFieldDatabaseMappingAttribute(TableName=\"{0}\", ColumnName=\"{1}\")]", table.DatabaseTableName, col.DatabaseColumnName.Replace("Key", "GUID"));
                     writer.WriteLine("        public ISearchCondition<{0}> {1}", colType, col.ColumnName);
@@ -680,7 +702,7 @@ namespace ClearCanvas.ImageServer.Model.SqlServer.CodeGenerator
             writer.WriteLine("    using ClearCanvas.ImageServer.Enterprise;");
             writer.WriteLine("");
 
-            writer.WriteLine("   public class {0}UpdateColumns : EntityUpdateColumns", table.TableName);
+            writer.WriteLine("   public partial class {0}UpdateColumns : EntityUpdateColumns", table.TableName);
             writer.WriteLine("   {");
             writer.WriteLine("       public {0}UpdateColumns()", table.TableName);
             writer.WriteLine("       : base(\"{0}\")", table.DatabaseTableName);
@@ -690,7 +712,7 @@ namespace ClearCanvas.ImageServer.Model.SqlServer.CodeGenerator
             {
                 if (!col.ColumnName.Equals("Key"))
                 {
-                    string colType = col.ColumnName.EndsWith("Enum") ? col.ColumnName : col.ColumnType.Name;
+					string colType = col.ColumnName.EndsWith("Enum") ? col.ColumnName : col.DeclaringType;
                     string colName = col.ColumnName;
                     DicomTag tag = DicomTagDictionary.GetDicomTag(col.ColumnName);
                     if (tag != null)

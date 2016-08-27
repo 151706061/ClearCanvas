@@ -28,6 +28,7 @@ using System.Collections.Generic;
 using ClearCanvas.Common;
 using ClearCanvas.Common.Utilities;
 using ClearCanvas.Desktop;
+using ClearCanvas.Enterprise.Common;
 using ClearCanvas.Enterprise.Desktop;
 using ClearCanvas.Ris.Application.Common;
 using ClearCanvas.Ris.Application.Common.Admin.ProcedureTypeGroupAdmin;
@@ -197,7 +198,7 @@ namespace ClearCanvas.Ris.Client.Admin
 
 			ProcedureTypeGroupEditorComponent editor = new ProcedureTypeGroupEditorComponent(item.ProcedureTypeGroupRef);
 			ApplicationComponentExitCode exitCode = LaunchAsDialog(
-				this.Host.DesktopWindow, editor, SR.TitleUpdateProcedureTypeGroup + " - " +item.Name + "(" +item.Category+ ")");
+				this.Host.DesktopWindow, editor, string.Format(SR.FormatTitleSubtitleCategory, SR.TitleUpdateProcedureTypeGroup, item.Name, item.Category));
 			if (exitCode == ApplicationComponentExitCode.Accepted)
 			{
 				editedItems.Add(editor.ProcedureTypeGroupSummary);

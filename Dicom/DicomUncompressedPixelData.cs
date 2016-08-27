@@ -40,7 +40,7 @@ namespace ClearCanvas.Dicom
 	{
 		#region Private Members
 
-		private List<FrameData> _fd = new List<FrameData>();
+		private readonly List<FrameData> _fd = new List<FrameData>();
 		private DicomAttribute _pd;
 
 		#endregion
@@ -115,16 +115,16 @@ namespace ClearCanvas.Dicom
 			var frameSize = UncompressedFrameSize;
 			var frameCount = NumberOfFrames;
 			var padding = ((frameCount*frameSize) & 1) == 1 ? 1 : 0;
-			var pixelData = new byte[frameCount*frameSize + padding];
 
-			var frame = 0;
-			foreach (var frameData in _fd)
+			using (var stream = ((DicomAttributeBinary) _pd).AsStream())
 			{
-				frameData.GetFrame(pixelData, frame*frameSize);
-				++frame;
+				stream.Position = 0;
+				foreach (var frameData in _fd)
+				{
+					stream.Write(frameData.GetFrame(), 0, frameSize);
+				}
+				stream.SetLength(frameCount*frameSize + padding);
 			}
-
-			_pd.Values = pixelData;
 		}
 
 		internal byte[] GetData()
@@ -467,6 +467,49 @@ namespace ClearCanvas.Dicom
 
 		#region Unused Bit Masking
 
+		internal static bool ZeroUnusedBits(Stream stream, int bitsAllocated, int bitsStored, int highBit)
+		{
+			return ZeroUnusedBits(stream, bitsAllocated, bitsStored, highBit, ByteBuffer.LocalMachineEndian);
+		}
+
+		internal static unsafe bool ZeroUnusedBits(Stream stream, int bitsAllocated, int bitsStored, int highBit, Endian endian)
+		{
+			if (bitsAllocated != 8 && bitsAllocated != 16)
+				throw new ArgumentException(String.Format("Invalid value for Bits Allocated ({0})", bitsAllocated));
+
+			stream.Position = 0;
+
+			var buffer = new byte[4096];
+			var anyChanged = false;
+			int bytesRead;
+
+			if (bitsAllocated == 8)
+			{
+				while ((bytesRead = stream.Read(buffer, 0, 4096)) > 0)
+				{
+					var result = ZeroUnusedBits(buffer, bitsStored, highBit);
+					stream.Seek(-bytesRead, SeekOrigin.Current);
+					stream.Write(buffer, 0, bytesRead);
+					if (!anyChanged && result)
+						anyChanged = true;
+				}
+			}
+			else
+			{
+				while ((bytesRead = stream.Read(buffer, 0, 4096)) > 0)
+				{
+					bool result;
+					fixed (byte* p = buffer)
+						result = ZeroUnusedBits((ushort*) p, bitsStored, highBit, buffer.Length/2, endian);
+					stream.Seek(-bytesRead, SeekOrigin.Current);
+					stream.Write(buffer, 0, bytesRead);
+					if (!anyChanged && result)
+						anyChanged = true;
+				}
+			}
+			return anyChanged;
+		}
+
 		/// <summary>
 		/// Masks
 		/// </summary>
@@ -594,6 +637,49 @@ namespace ClearCanvas.Dicom
 
 		#region Right Align Pixel Data
 
+		internal static bool RightAlign(Stream stream, int bitsAllocated, int bitsStored, int highBit)
+		{
+			return RightAlign(stream, bitsAllocated, bitsStored, highBit, ByteBuffer.LocalMachineEndian);
+		}
+
+		internal static unsafe bool RightAlign(Stream stream, int bitsAllocated, int bitsStored, int highBit, Endian endian)
+		{
+			if (bitsAllocated != 8 && bitsAllocated != 16)
+				throw new ArgumentException(String.Format("Invalid value for Bits Allocated ({0})", bitsAllocated));
+
+			stream.Position = 0;
+
+			var buffer = new byte[4096];
+			var anyChanged = false;
+			int bytesRead;
+
+			if (bitsAllocated == 8)
+			{
+				while ((bytesRead = stream.Read(buffer, 0, 4096)) > 0)
+				{
+					var result = RightAlign(buffer, bitsStored, highBit);
+					stream.Seek(-bytesRead, SeekOrigin.Current);
+					stream.Write(buffer, 0, bytesRead);
+					if (!anyChanged && result)
+						anyChanged = true;
+				}
+			}
+			else
+			{
+				while ((bytesRead = stream.Read(buffer, 0, 4096)) > 0)
+				{
+					bool result;
+					fixed (byte* p = buffer)
+						result = RightAlign((ushort*) p, bitsStored, highBit, buffer.Length/2, endian);
+					stream.Seek(-bytesRead, SeekOrigin.Current);
+					stream.Write(buffer, 0, bytesRead);
+					if (!anyChanged && result)
+						anyChanged = true;
+				}
+			}
+			return anyChanged;
+		}
+
 		public static bool RightAlign(byte[] pixelData, int bitsAllocated, int bitsStored, int highBit)
 		{
 			return RightAlign(pixelData, bitsAllocated, bitsStored, highBit, ByteBuffer.LocalMachineEndian);
@@ -717,6 +803,86 @@ namespace ClearCanvas.Dicom
 
 		#endregion
 
+		#region Normalize Pixel Data (Grayscale)
+
+		public static unsafe void NormalizePixelData(byte[] pixelData, int bitsAllocated, int bitsStored, int highBit, bool isSigned)
+		{
+			var unusedLowBits = GetLowBit(bitsStored, highBit);
+			var highestBit = bitsAllocated - 1;
+			var unusedHighBits = highestBit - highBit;
+
+			var leftShift = unusedHighBits;
+			var rightShift = unusedHighBits + unusedLowBits;
+
+			if (bitsAllocated == 16)
+			{
+				var length = pixelData.Length/2;
+				fixed (byte* p = pixelData)
+				{
+					if (isSigned)
+					{
+						var pPixelData = (short*) p;
+						for (int i = 0; i < length; ++i)
+						{
+							// sign-fill the unused bits by shifting it left, then shifting it back
+							var value = *pPixelData;
+							value <<= leftShift;
+							value >>= rightShift;
+							*pPixelData++ = value;
+						}
+					}
+					else
+					{
+						var pPixelData = (ushort*) p;
+						for (int i = 0; i < length; ++i)
+						{
+							// sign-fill the unused bits by shifting it left, then shifting it back
+							var value = *pPixelData;
+							value <<= leftShift;
+							value >>= rightShift;
+							*pPixelData++ = value;
+						}
+					}
+				}
+			}
+			else
+			{
+				// 8-bit
+				var length = pixelData.Length;
+				fixed (byte* p = pixelData)
+				{
+					if (isSigned)
+					{
+						var pPixelData = (sbyte*) p;
+						for (int i = 0; i < length; ++i)
+						{
+							// sign-fill the unused bits by shifting it left, then shifting it back
+							var value = *pPixelData;
+							value <<= leftShift;
+							value >>= rightShift;
+							*pPixelData++ = value;
+						}
+					}
+					else
+					{
+						var pPixelData = p;
+						for (int i = 0; i < length; ++i)
+						{
+							// sign-fill the unused bits by shifting it left, then shifting it back
+							var value = *pPixelData;
+							value <<= leftShift;
+							value >>= rightShift;
+							*pPixelData++ = value;
+						}
+					}
+				}
+			}
+		}
+
+		#endregion
+
+		#region Palette Color to RGB Conversion
+
 		/// <summary>
 		/// Convert Palette Color pixel data to RGB.
 		/// </summary>
@@ -814,6 +980,8 @@ namespace ClearCanvas.Dicom
 				}
 			}
 		}
+
+		#endregion
 
 		#region Color Space Conversion
 
@@ -1028,7 +1196,7 @@ namespace ClearCanvas.Dicom
 				if (_obAttrib.Reference != null)
 				{
 					ByteBuffer bb;
-					using (var fs = File.OpenRead(_obAttrib.Reference.Filename))
+					using (var fs = _obAttrib.Reference.StreamOpener.Open())
 					{
 						long offset = _obAttrib.Reference.Offset + _frameIndex*FrameSize;
 						fs.Seek(offset, SeekOrigin.Begin);
@@ -1083,7 +1251,7 @@ namespace ClearCanvas.Dicom
 						// For odd number frames, we get a byte before the frame
 						// and for even frames we get a byte after the frame.
 
-						using (var fs = File.OpenRead(_owAttrib.Reference.Filename))
+						using (var fs = _owAttrib.Reference.StreamOpener.Open())
 						{
 							if (_frameIndex%2 == 1)
 								fs.Seek((_owAttrib.Reference.Offset + _frameIndex*FrameSize) - 1, SeekOrigin.Begin);
@@ -1106,7 +1274,7 @@ namespace ClearCanvas.Dicom
 						return;
 					}
 
-					using (var fs = File.OpenRead(_owAttrib.Reference.Filename))
+					using (var fs = _owAttrib.Reference.StreamOpener.Open())
 					{
 						fs.Seek(_owAttrib.Reference.Offset + _frameIndex*FrameSize, SeekOrigin.Begin);
 

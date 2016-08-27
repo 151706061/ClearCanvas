@@ -152,14 +152,14 @@ namespace ClearCanvas.ImageViewer.Thumbnails
 
 			    try
 			    {
-			        using (var surface = image.ImageRenderer.GetRenderingSurface(IntPtr.Zero, bmp.Width, bmp.Height))
+			        using (var surface = image.ImageRenderer.CreateRenderingSurface(IntPtr.Zero, bmp.Width, bmp.Height, RenderingSurfaceType.Offscreen))
 			        {
 			            surface.ContextID = contextId;
 			            surface.ClipRectangle = new Rectangle(0, 0, bmp.Width, bmp.Height);
 
-			            var drawArgs = new DrawArgs(surface, null, DrawMode.Render) {Dpi = dpi};
+			            var drawArgs = new DrawArgs(surface, null, DrawMode.Render) {Dpi = dpi, Tag = bmp};
 			            image.Draw(drawArgs);
-			            drawArgs = new DrawArgs(surface, null, DrawMode.Refresh) {Dpi = dpi};
+			            drawArgs = new DrawArgs(surface, null, DrawMode.Refresh) {Dpi = dpi, Tag = bmp};
 			            image.Draw(drawArgs);
 			        }
 			    }

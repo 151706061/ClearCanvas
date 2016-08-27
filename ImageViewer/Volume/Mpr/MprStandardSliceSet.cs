@@ -26,6 +26,7 @@ using System;
 using ClearCanvas.Common;
 using ClearCanvas.Common.Utilities;
 using ClearCanvas.ImageViewer.StudyManagement;
+using ClearCanvas.ImageViewer.Volumes;
 
 namespace ClearCanvas.ImageViewer.Volume.Mpr
 {
@@ -44,7 +45,7 @@ namespace ClearCanvas.ImageViewer.Volume.Mpr
 		private event EventHandler _slicerParamsChanged;
 		private IVolumeSlicerParams _slicerParams;
 
-		public MprStandardSliceSet(Volume volume, IVolumeSlicerParams slicerParams) : base(volume)
+		public MprStandardSliceSet(Volumes.Volume volume, IVolumeSlicerParams slicerParams) : base(volume)
 		{
 			Platform.CheckForNullReference(slicerParams, "slicerParams");
 			_slicerParams = slicerParams;
@@ -91,9 +92,9 @@ namespace ClearCanvas.ImageViewer.Volume.Mpr
 			{
 				base.ClearAndDisposeSops();
 
-				using (VolumeSlicer slicer = new VolumeSlicer(base.Volume, _slicerParams, base.Uid))
+				using (VolumeSlicer slicer = new VolumeSlicer(base.Volume, _slicerParams))
 				{
-					foreach (ISopDataSource dataSource in slicer.CreateSlices())
+					foreach (ISopDataSource dataSource in slicer.CreateSliceSops(Uid))
 					{
 						base.SliceSops.Add(new MprSliceSop(dataSource));
 					}

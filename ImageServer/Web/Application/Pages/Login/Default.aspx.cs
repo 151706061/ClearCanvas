@@ -23,15 +23,17 @@
 #endregion
 
 using System;
+using System.IO;
 using System.ServiceModel;
 using System.Threading;
 using System.Web;
 using System.Web.Security;
-using System.Xml;
+using System.Web.UI.HtmlControls;
 using ClearCanvas.Common;
 using ClearCanvas.Dicom.Audit;
 using ClearCanvas.Enterprise.Common;
 using ClearCanvas.ImageServer.Common;
+using ClearCanvas.ImageServer.Common.Helpers;
 using ClearCanvas.ImageServer.Web.Application.Pages.Common;
 using ClearCanvas.ImageServer.Web.Common.Security;
 using SR = Resources.SR;
@@ -44,34 +46,95 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Login
     [ExtensibleAttribute(ExtensionPoint=typeof(LoginPageExtensionPoint))]
     public partial class LoginPage : BasePage, ILoginPage
     {
+		private string CustomCssUrl;
+
+    	const String SplashImageNamePrefix = "LoginSplash";
+
+		protected String ApplicationName { get; set; }
+		protected String SplashScreenUrl { get; set; }
+		protected String CssClassName { get; set; }
+
         protected override void OnInit(EventArgs e)
         {
             base.OnInit(e);
+
+			// Check for customization parameters
+			ApplicationName = Request.Params["AppName"] ?? ImageServerConstants.DefaultApplicationName;
+			SplashScreenUrl = Request.Params["SplashScreenUrl"] ?? DefaultSplashScreenPath;
+			CssClassName = Request.Params["CssClassName"];
+			CustomCssUrl = Request.Params["CssUrl"];
+
+			if (!string.IsNullOrEmpty(CssClassName))
+			{
+				this.PageBody.Attributes["class"] += " " + CssClassName;
+			}
+
+			if (!string.IsNullOrEmpty(CustomCssUrl))
+			{
+				// include the custom css (this will append to the end of the list and will overwrite the default css)
+				var stylesheet = new HtmlLink { Href = CustomCssUrl };
+				stylesheet.Attributes.Add("rel", "stylesheet");
+				stylesheet.Attributes.Add("type", "text/css");
+				Page.Header.Controls.Add(stylesheet);
+			}
+
+        	SetSplashScreen();
+			
             ForeachExtension<ILoginPageExtension>(ext => ext.OnLoginPageInit(this));
         }
 
-        protected void Page_Load(object sender, EventArgs e)
+		/// <summary>
+		/// Return the virtual path for the default splash screen
+		/// </summary>
+    	protected string DefaultSplashScreenPath
+    	{
+    		get
+    		{
+				return string.Format("~/App_Themes/{0}/images/{1}.png", Theme, SplashImageNamePrefix);
+    		}
+    	}
+
+    	protected void Page_Load(object sender, EventArgs e)
         {
-            if (SessionManager.Current != null)
-            {
-                // already logged in. Maybe from a different page
-                HttpContext.Current.Response.Redirect(FormsAuthentication.GetRedirectUrl(SessionManager.Current.Credentials.UserName, false), true);
-            } 
-            
-            if (!ServerPlatform.IsManifestVerified)
-            {
-                ManifestWarningTextLabel.Text = SR.NonStandardInstallation;
-            }
+    		if (!Page.IsPostBack)
+    		{
+				if (SessionManager.Current != null)
+				{
+					// User has logged in from another page.
+					// Make sure the session (based on the cookie) is actually valid before redirecting
+					var userId = SessionManager.Current.User.UserName;
+					var sessionId = SessionManager.Current.User.SessionTokenId;
+					string[] authorityTokens;
+					if (SessionManager.VerifySession(userId, sessionId, out authorityTokens, true))
+					{
+						RedirectAfterLogin();
+					}
 
-            VersionLabel.Text = String.IsNullOrEmpty(ServerPlatform.VersionString) ? Resources.SR.Unknown : ServerPlatform.VersionString;
-            LanguageLabel.Text = Thread.CurrentThread.CurrentUICulture.NativeName;
-            CopyrightLabel.Text = ProductInformation.Copyright;
+					// session is invalid, looks like the web server and the authentication server are out of sync? 
+					// To be safe, redirect user to the logout page
+					var originalRedirectUrl = SessionManager.GetRedirectUrl(SessionManager.Current);
+					var logoutUrl = string.Format(ImageServerConstants.PageURLs.LogoutPage, originalRedirectUrl);
 
-            DataBind();
+					Response.Redirect(Page.ResolveClientUrl(logoutUrl), true);
+					return;
+				}
 
-            SetPageTitle(Titles.LoginPageTitle);
+				if (!ServerPlatform.IsManifestVerified)
+				{
+					ManifestWarningTextLabel.Text = SR.NonStandardInstallation;
+				}
 
-            UserName.Focus();
+				VersionLabel.Text = String.IsNullOrEmpty(ServerPlatform.VersionString) ? Resources.SR.Unknown : ServerPlatform.VersionString;
+				LanguageLabel.Text = Thread.CurrentThread.CurrentUICulture.NativeName;
+				CopyrightLabel.Text = ProductInformation.Copyright;
+
+				DataBind();
+
+				SetPageTitle(Titles.LoginPageTitle);
+
+				UserName.Focus();
+	
+    		}
         }
 
         protected void LoginClicked(object sender, EventArgs e)
@@ -79,60 +142,61 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Login
             if (SessionManager.Current != null)
             {
                 // already logged in. Maybe from different page
-                HttpContext.Current.Response.Redirect(FormsAuthentication.GetRedirectUrl(SessionManager.Current.Credentials.UserName, false), true);
+            	RedirectAfterLogin();
             } 
 
             try
             {
-                SessionManager.InitializeSession(UserName.Text, Password.Text);
+                SessionManager.InitializeSession(UserName.Text, Password.Text, ApplicationName ?? ImageServerConstants.DefaultApplicationName);
 
-				UserAuthenticationAuditHelper audit = new UserAuthenticationAuditHelper(ServerPlatform.AuditSource,
-					EventIdentificationContentsEventOutcomeIndicator.Success, UserAuthenticationEventType.Login);
-				audit.AddUserParticipant(new AuditPersonActiveParticipant(UserName.Text, null, SessionManager.Current.Credentials.DisplayName));
-				ServerPlatform.LogAuditMessage(audit);
 			}
             catch (PasswordExpiredException)
             {
                 Platform.Log(LogLevel.Info, "Password for {0} has expired. Requesting new password.",UserName.Text);
                 PasswordExpiredDialog.Show(UserName.Text, Password.Text);
 
-				UserAuthenticationAuditHelper audit = new UserAuthenticationAuditHelper(ServerPlatform.AuditSource,
-					EventIdentificationContentsEventOutcomeIndicator.Success, UserAuthenticationEventType.Login);
-				audit.AddUserParticipant(new AuditPersonActiveParticipant(UserName.Text, null, null));
-				ServerPlatform.LogAuditMessage(audit);
 			}
             catch (UserAccessDeniedException ex)
             {
-                Platform.Log(LogLevel.Error, ex, ex.Message);
+                Platform.Log(LogLevel.Warn, "Login unsuccessful for {0}.  {1}", UserName.Text, ErrorMessages.UserAccessDenied);
+                Platform.Log(LogLevel.Debug, ex, ex.Message);
                 ShowError(ErrorMessages.UserAccessDenied);
                 UserName.Focus();
-
-                UserAuthenticationAuditHelper audit = new UserAuthenticationAuditHelper(ServerPlatform.AuditSource,
-                    EventIdentificationContentsEventOutcomeIndicator.SeriousFailureActionTerminated, UserAuthenticationEventType.Login);
-                audit.AddUserParticipant(new AuditPersonActiveParticipant(UserName.Text, null, null));
-                ServerPlatform.LogAuditMessage(audit);
             }
             catch (CommunicationException ex)
             {
                 Platform.Log(LogLevel.Error, ex, "Unable to contact A/A server");
                 ShowError(ErrorMessages.CannotContactEnterpriseServer);
 
-				UserAuthenticationAuditHelper audit = new UserAuthenticationAuditHelper(ServerPlatform.AuditSource,
-					EventIdentificationContentsEventOutcomeIndicator.MajorFailureActionMadeUnavailable, UserAuthenticationEventType.Login);
-				audit.AddUserParticipant(new AuditPersonActiveParticipant(UserName.Text, null, null));
-				ServerPlatform.LogAuditMessage(audit);
 			}
+            catch (ArgumentException ex)
+            {
+                Platform.Log(LogLevel.Warn, ex.Message);
+                Platform.Log(LogLevel.Debug, ex, "Login error:");
+                ShowError(ex.Message);
+            }
             catch (Exception ex)
             {
                 Platform.Log(LogLevel.Error, ex, "Login error:");
                 ShowError(ex.Message);
-
-				UserAuthenticationAuditHelper audit = new UserAuthenticationAuditHelper(ServerPlatform.AuditSource,
-					EventIdentificationContentsEventOutcomeIndicator.MajorFailureActionMadeUnavailable, UserAuthenticationEventType.Login);
-				audit.AddUserParticipant(new AuditPersonActiveParticipant(UserName.Text, null, null));
-				ServerPlatform.LogAuditMessage(audit);
 			}
         }
+
+		private void RedirectAfterLogin()
+		{
+			//The GetRedirectUrl method returns the URL specified in the query string using the ReturnURL variable name.
+
+			var redirectUrl = SessionManager.GetRedirectUrl(SessionManager.Current);
+			HttpContext.Current.Response.Redirect(redirectUrl, true);
+		}
+
+		/// <summary>
+		/// Sets the splash screen for the current application
+		/// </summary>
+		private void SetSplashScreen()
+		{
+			SplashScreen.ImageUrl = SplashScreenUrl;
+		}
 
         public void ChangePassword(object sender, EventArgs e)
         {

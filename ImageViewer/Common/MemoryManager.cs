@@ -287,12 +287,11 @@ namespace ClearCanvas.ImageViewer.Common
 			if (!Enabled)
 				return;
 #endif
+			// CR (JY 2013-APR-15): Assert container != null
 			lock(_syncLock)
 			{
 				_containersToRemove.Remove(container);
-
-				if (!_containersToAdd.Contains(container))
-					_containersToAdd.Add(container);
+				_containersToAdd.Add(container);
 
 				StartCollectionThread();
 			}
@@ -306,9 +305,7 @@ namespace ClearCanvas.ImageViewer.Common
 			lock (_syncLock)
 			{
 				_containersToAdd.Remove(container);
-
-				if (!_containersToRemove.Contains(container))
-					_containersToRemove.Add(container);
+				_containersToRemove.Add(container);
 			}
 		}
 

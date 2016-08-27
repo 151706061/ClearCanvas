@@ -37,9 +37,9 @@ using ClearCanvas.Desktop.Validation;
 
 namespace ClearCanvas.Ris.Client.Workflow
 {
-    [MenuAction("apply", "folderexplorer-items-contextmenu/Complete Downtime Recovery...", "Apply")]
-	[ButtonAction("apply", "folderexplorer-items-toolbar/Complete Downtime Recovery...", "Apply")]
-	[IconSet("apply", IconScheme.Colour, "VerifyReportSmall.png", "VerifyReportMedium.png", "VerifyReportLarge.png")]
+	[MenuAction("apply", "folderexplorer-items-contextmenu/MenuCompleteDowntimeRecovery", "Apply")]
+	[ButtonAction("apply", "folderexplorer-items-toolbar/MenuCompleteDowntimeRecovery", "Apply")]
+	[IconSet("apply", "VerifyReportSmall.png", "VerifyReportMedium.png", "VerifyReportLarge.png")]
 	[ActionPermission("apply", Application.Common.AuthorityTokens.Workflow.Downtime.RecoveryOperations)]
     [EnabledStateObserver("apply", "Enabled", "EnabledChanged")]
 	[VisibleStateObserver("apply", "Visible", "VisibleChanged")]
@@ -89,7 +89,7 @@ namespace ClearCanvas.Ris.Client.Workflow
 			var exitCode = ApplicationComponent.LaunchAsDialog(
 				this.Context.DesktopWindow,
 				new DowntimeReportEntryComponent(item.ProcedureRef),
-				"Complete Downtime Recovery");
+				SR.TitleCompleteDowntimeRecovery);
 
 			if (exitCode == ApplicationComponentExitCode.Accepted)
 			{

@@ -35,9 +35,9 @@ using ClearCanvas.Ris.Client.Formatting;
 
 namespace ClearCanvas.Ris.Client.Workflow
 {
-	[MenuAction("apply", "folderexplorer-items-contextmenu/Modify Order", "Apply")]
-	[ButtonAction("apply", "folderexplorer-items-toolbar/Modify Order", "Apply")]
-	[IconSet("apply", IconScheme.Colour, "ModifyOrderSmall.png", "ModifyOrderMedium.png", "ModifyOrderLarge.png")]
+	[MenuAction("apply", "folderexplorer-items-contextmenu/MenuModifyOrder", "Apply")]
+	[ButtonAction("apply", "folderexplorer-items-toolbar/MenuModifyOrder", "Apply")]
+	[IconSet("apply", "ModifyOrderSmall.png", "ModifyOrderMedium.png", "ModifyOrderLarge.png")]
 	[EnabledStateObserver("apply", "Enabled", "EnabledChanged")]
 	[ActionPermission("apply", ClearCanvas.Ris.Application.Common.AuthorityTokens.Workflow.Order.Modify)]
 	public abstract class ModifyOrderToolBase<TItem, TContext> : WorkflowItemTool<TItem, TContext>

@@ -28,6 +28,7 @@ using ClearCanvas.Dicom;
 using ClearCanvas.Dicom.Network;
 using ClearCanvas.Dicom.Network.Scp;
 using ClearCanvas.Enterprise.Core;
+using ClearCanvas.ImageServer.Core;
 using ClearCanvas.ImageServer.Model;
 using ClearCanvas.ImageServer.Model.Brokers;
 using ClearCanvas.ImageServer.Model.Parameters;
@@ -61,6 +62,9 @@ namespace ClearCanvas.ImageServer.Services.Dicom
         /// <returns></returns>
         public override IList<SupportedSop> GetSupportedSopClasses()
         {
+            if (!Context.AllowStorage)
+                return new List<SupportedSop>();
+
             if (_sopList == null)
             {
                 _sopList = new List<SupportedSop>();
@@ -70,23 +74,23 @@ namespace ClearCanvas.ImageServer.Services.Dicom
                 {
                     // Get the transfer syntaxes
                     _syntaxList = LoadTransferSyntaxes(read, Partition.GetKey(),true);
+                }
 
-                    // Set the input parameters for query
-                    PartitionSopClassQueryParameters inputParms = new PartitionSopClassQueryParameters();
-                    inputParms.ServerPartitionKey = Partition.GetKey();
-
-                    IQueryServerPartitionSopClasses broker = read.GetBroker<IQueryServerPartitionSopClasses>();
-                    IList<PartitionSopClass> sopClasses = broker.Find(inputParms);
-
+                var partitionSopClassConfig = new PartitionSopClassConfiguration();
+                var sopClasses = partitionSopClassConfig.GetAllPartitionSopClasses(Partition);
+                if (sopClasses != null)
+                {
                     // Now process the SOP Class List
                     foreach (PartitionSopClass partitionSopClass in sopClasses)
                     {
                         if (partitionSopClass.Enabled
                             && !partitionSopClass.NonImage)
                         {
-                            SupportedSop sop = new SupportedSop();
+                            var sop = new SupportedSop
+                                {
+                                    SopClass = SopClass.GetSopClass(partitionSopClass.SopClassUid)
+                                };
 
-                            sop.SopClass = SopClass.GetSopClass(partitionSopClass.SopClassUid);
                             foreach (PartitionTransferSyntax syntax in _syntaxList)
                             {
                                 sop.SyntaxList.Add(TransferSyntax.GetTransferSyntax(syntax.Uid));
@@ -95,6 +99,7 @@ namespace ClearCanvas.ImageServer.Services.Dicom
                         }
                     }
                 }
+
             }
             return _sopList;
         }

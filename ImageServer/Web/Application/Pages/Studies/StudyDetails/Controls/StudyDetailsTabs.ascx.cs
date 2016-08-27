@@ -28,7 +28,7 @@ using System.Threading;
 using System.Web.UI;
 using AjaxControlToolkit;
 using ClearCanvas.Common.Utilities;
-using ClearCanvas.ImageServer.Enterprise.Authentication;
+using ClearCanvas.ImageServer.Common.Authentication;
 using ClearCanvas.ImageServer.Model;
 using ClearCanvas.ImageServer.Web.Common.Data;
 using ClearCanvas.ImageServer.Web.Common.Data.DataSource;
@@ -188,13 +188,13 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
             UpdateAuthorityGroupDialog.AuthorityGroupsEdited += UpdateAuthorityGroupDialog_AuthorityGroupsEdited;
 
             //DataAccessTabPanel.Visible = Thread.CurrentPrincipal.IsInRole(ClearCanvas.Enterprise.Common.AuthorityTokens.Admin.Security.AuthorityGroup);
-            DataAccessTabPanel.Enabled = Thread.CurrentPrincipal.IsInRole(ClearCanvas.ImageServer.Enterprise.Authentication.AuthorityTokens.Study.EditDataAccess);
+            //DataAccessTabPanel.Enabled = Thread.CurrentPrincipal.IsInRole(ClearCanvas.ImageServer.Enterprise.Authentication.AuthorityTokens.Study.EditDataAccess);
             
         }
 
         private void UpdateAuthorityGroupDialog_AuthorityGroupsEdited(object sender, EventArgs e)
         {
-            DataAccessPanel.DataBind();
+            
         }
 
         protected override void OnPreRender(EventArgs e)
@@ -262,8 +262,6 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
                 ArchivePanel.Study = Study.TheStudy;
                 HistoryPanel.TheStudySummary = Study;
                 StudyIntegrityQueueGridView.Study = Study;
-                DataAccessPanel.Study = Study;
-                DataAccessPanel.Partition = Partition;
             }
 
             base.DataBind();

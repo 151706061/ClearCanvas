@@ -24,6 +24,7 @@
 
 using System;
 using System.Security.Cryptography.X509Certificates;
+using System.ServiceModel;
 using System.ServiceModel.Security;
 
 namespace ClearCanvas.Enterprise.Common
@@ -37,7 +38,7 @@ namespace ClearCanvas.Enterprise.Common
             Type channelFactoryClass,
             Uri serviceUri,
             bool authenticationRequired,
-            int maxReceivedMessageSize,
+            long maxReceivedMessageSize,
             X509CertificateValidationMode certificateValidationMode,
             X509RevocationMode revocationMode)
         {
@@ -47,6 +48,8 @@ namespace ClearCanvas.Enterprise.Common
             this.MaxReceivedMessageSize = maxReceivedMessageSize;
             this.CertificateValidationMode = certificateValidationMode;
             this.RevocationMode = revocationMode;
+        	this.SendTimeoutSeconds = 0;
+			this.TransferMode = TransferMode.Buffered;
         }
 
 		/// <summary>
@@ -67,7 +70,13 @@ namespace ClearCanvas.Enterprise.Common
 		/// <summary>
 		/// The maximum size of received messages to allow, in bytes.
 		/// </summary>
-        public int MaxReceivedMessageSize;
+        public long MaxReceivedMessageSize;
+
+		/// <summary>
+		/// The time, in seconds, in which a send operation must complete.
+		/// </summary>
+		/// <remarks>Value less than or equal to zero should be ignored.</remarks>
+		public int SendTimeoutSeconds;
 
         /// <summary>
         /// Specifies the mode used for X509 certificate validation.
@@ -78,5 +87,10 @@ namespace ClearCanvas.Enterprise.Common
         /// Specifies the mode used to check for X509 certificate revocation.
         /// </summary>
         public X509RevocationMode RevocationMode;
+
+		/// <summary>
+		/// The TransferMode used for the service.
+		/// </summary>
+		public TransferMode TransferMode;
     }
 }

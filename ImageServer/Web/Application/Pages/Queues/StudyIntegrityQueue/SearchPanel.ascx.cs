@@ -27,7 +27,7 @@ using System.Collections.Generic;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using AjaxControlToolkit;
-using ClearCanvas.ImageServer.Enterprise.Authentication;
+using ClearCanvas.ImageServer.Common.Authentication;
 using ClearCanvas.ImageServer.Model;
 using Resources;
 using ClearCanvas.ImageServer.Web.Application.Helpers;
@@ -70,14 +70,6 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Queues.StudyIntegrityQue
         /// </summary>
         public ServerPartition ServerPartition { get; set; }
 
-        public string PatientNameFromUrl { get; set; }
-
-        public string PatientIdFromUrl { get; set; }
-
-        public string ReasonFromUrl { get; set; }
-
-        public bool DataBindFromUrl { get; set; }
-
         #endregion Public Properties  
 
         #region Public Methods
@@ -118,13 +110,8 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Queues.StudyIntegrityQue
                                                                        FromDateCalendarExtender.ClientID);
             ClearToDateButton.OnClientClick = ScriptHelper.ClearDate(ToDate.ClientID,
                                                                      ToDateCalendarExtender.ClientID);
-            ToDate.Attributes["OnChange"] = ScriptHelper.CheckDateRange(FromDate.ClientID, ToDate.ClientID,
-                                                                        ToDate.ClientID, ToDateCalendarExtender.ClientID,
-                                                                        "To Date must be greater than From Date");
-            FromDate.Attributes["OnChange"] = ScriptHelper.CheckDateRange(FromDate.ClientID, ToDate.ClientID,
-                                                                          FromDate.ClientID,
-                                                                          FromDateCalendarExtender.ClientID,
-                                                                          "From Date must be less than To Date");
+            SearchButton.Attributes["onclick"] = ScriptHelper.CheckDateRange(FromDate.ClientID, ToDate.ClientID,
+																		SR.ToFromDateValidationError);
 
             GridPagerTop.InitializeGridPager(Labels.GridPagerQueueSingleItem,
                                              Labels.GridPagerQueueMultipleItems,
@@ -137,12 +124,12 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Queues.StudyIntegrityQue
                                                                  {
                                                                      source.Partition = ServerPartition;
 
-                                                                     if (!String.IsNullOrEmpty(PatientName.Text))
-                                                                         source.PatientName = SearchHelper.NameWildCard(PatientName.Text);
-                                                                     if (!String.IsNullOrEmpty(PatientId.Text))
-                                                                         source.PatientId = SearchHelper.TrailingWildCard(PatientId.Text);
-                                                                     if (!String.IsNullOrEmpty(AccessionNumber.Text))
-                                                                         source.AccessionNumber = SearchHelper.TrailingWildCard(AccessionNumber.Text);
+                                                                     if (!String.IsNullOrEmpty(PatientName.TrimText))
+                                                                         source.PatientName = SearchHelper.NameWildCard(PatientName.TrimText);
+                                                                     if (!String.IsNullOrEmpty(PatientId.TrimText))
+                                                                         source.PatientId = SearchHelper.TrailingWildCard(PatientId.TrimText);
+                                                                     if (!String.IsNullOrEmpty(AccessionNumber.TrimText))
+                                                                         source.AccessionNumber = SearchHelper.TrailingWildCard(AccessionNumber.TrimText);
                                                                      if (!String.IsNullOrEmpty(FromDate.Text))
                                                                          source.FromInsertTime = FromDate.Text;
 
@@ -173,24 +160,28 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Queues.StudyIntegrityQue
             List<StudyIntegrityReasonEnum> reasons = StudyIntegrityReasonEnum.GetAll();
             foreach (StudyIntegrityReasonEnum reason in reasons)
             {
-                ReasonListBox.Items.Add(new ListItem(ServerEnumDescription.GetLocalizedDescription( reason), reason.Lookup));
+                ReasonListBox.Items.Add(new ListItem(ServerEnumDescription.GetLocalizedDescription(reason), reason.Lookup));
             }
+        }
 
-            if (!string.IsNullOrEmpty(ReasonFromUrl))
-                ReasonListBox.Items.FindByValue(ReasonFromUrl).Selected = true;
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            if (!IsPostBack && !Page.IsAsync)
+            {
+                var patientId = Server.UrlDecode(Request["PatientID"]);
+                var patientName = Server.UrlDecode(Request["PatientName"]);
+                var reason = Server.UrlDecode(Request["Reason"]);
+                var databind = Server.UrlDecode(Request["Databind"]);
+                if (patientId != null || patientName != null || reason != null || databind != null)
+                {
+                    PatientId.TrimText = patientId;
+                    PatientName.TrimText = patientName;
+                    if (reason != null)
+                        ReasonListBox.Items.FindByValue(reason).Selected = true;
 
-            if (!string.IsNullOrEmpty(PatientNameFromUrl) || !string.IsNullOrEmpty(PatientIdFromUrl))
-            {
-                PatientName.Text = PatientNameFromUrl;
-                PatientId.Text = PatientIdFromUrl;
-                
-                StudyIntegrityQueueItemList.SetDataSource();
-                StudyIntegrityQueueItemList.Refresh();
-            }
-            else if (DataBindFromUrl)
-            {
-                StudyIntegrityQueueItemList.SetDataSource();
-                StudyIntegrityQueueItemList.Refresh();
+                    StudyIntegrityQueueItemList.SetDataSource();
+                    StudyIntegrityQueueItemList.Refresh();
+                }
             }
         }
 
@@ -201,8 +192,15 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Queues.StudyIntegrityQue
 
         protected void ReconcileButton_Click(object sender, EventArgs e)
         {
+            var list = StudyIntegrityQueueItemList.SelectedItems;
+            if (list == null || list.Count == 0)
+            {
+                StudyIntegrityQueueItemList.Refresh();
+                return;
+            }
+
             ReconcileDetails details =
-                ReconcileDetailsAssembler.CreateReconcileDetails(StudyIntegrityQueueItemList.SelectedItems[0]);
+                ReconcileDetailsAssembler.CreateReconcileDetails(list[0]);
 
             ((Default) Page).OnReconcileItem(details);
         }

@@ -80,6 +80,11 @@ namespace ClearCanvas.ImageViewer.AdvancedImaging.Fusion.Utilities
 			get { return (input - _rescaleIntercept)/_rescaleSlope; }
 		}
 
+		public override void LookupValues(double[] input, double[] output, int count)
+		{
+			LutFunctions.LookupLinearInverse(input, output, count, _rescaleSlope, _rescaleIntercept);
+		}
+
 		public override string GetKey()
 		{
 			return string.Format(@"NormInverse_{0}_{1}", _rescaleSlope, _rescaleIntercept);
@@ -87,7 +92,7 @@ namespace ClearCanvas.ImageViewer.AdvancedImaging.Fusion.Utilities
 
 		public override string GetDescription()
 		{
-			return string.Format(@"Normalization Function Inverse of m={0} b={1}", _rescaleSlope, _rescaleIntercept);
+			return string.Format(@"Normalization Function Inverse of m={0:0.#} b={1:0.#}", _rescaleSlope, _rescaleIntercept);
 		}
 	}
 }

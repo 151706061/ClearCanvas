@@ -33,6 +33,7 @@ using ClearCanvas.Desktop.Tools;
 using ClearCanvas.Enterprise.Common;
 using ClearCanvas.Enterprise.Common.Admin.AuthorityGroupAdmin;
 using ClearCanvas.Enterprise.Common.Setup;
+using AuthorityTokens = ClearCanvas.Enterprise.Common.AuthorityTokens;
 
 namespace ClearCanvas.Enterprise.Desktop
 {
@@ -215,7 +216,7 @@ namespace ClearCanvas.Enterprise.Desktop
 
 			var editor = new AuthorityGroupEditorComponent(item, false);
 			var exitCode = LaunchAsDialog(
-				Host.DesktopWindow, editor, SR.TitleUpdateAuthorityGroup + " - " + item.Name);
+				Host.DesktopWindow, editor, string.Format(SR.FormatTitleSubtitle, SR.TitleUpdateAuthorityGroup, item.Name));
 			if (exitCode == ApplicationComponentExitCode.Accepted)
 			{
 				editedItems.Add(editor.AuthorityGroupSummary);

@@ -24,20 +24,21 @@
 
 using System;
 using System.Collections.Generic;
+using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using ClearCanvas.Common;
 using ClearCanvas.Common.Utilities;
 using ClearCanvas.Dicom.Audit;
-using ClearCanvas.Enterprise.Common;
-using ClearCanvas.Enterprise.Core;
 using ClearCanvas.ImageServer.Common;
+using ClearCanvas.ImageServer.Common.Helpers;
 using ClearCanvas.ImageServer.Enterprise;
 using ClearCanvas.ImageServer.Model;
 using ClearCanvas.ImageServer.Model.EntityBrokers;
 using ClearCanvas.ImageServer.Web.Common;
 using ClearCanvas.ImageServer.Web.Common.Data;
 using ClearCanvas.ImageServer.Web.Common.Security;
+using AuthorityTokens = ClearCanvas.ImageServer.Common.Authentication.AuthorityTokens;
 using SR = Resources.SR;
 
 namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Controls
@@ -176,7 +177,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
         protected override void OnInit(EventArgs e)
         {
             //Set up the control to handle custom reasons if the user has the authority.
-            if (!SessionManager.Current.User.IsInRole(Enterprise.Authentication.AuthorityTokens.Study.SaveReason))
+            if (!SessionManager.Current.User.IsInRole(AuthorityTokens.Study.SaveReason))
             {
                 ReasonSavePanel.Visible = false;
                 SaveReasonAsName.Attributes.Add("display", "none");
@@ -185,7 +186,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
             else
             {
                 //Hide/Disable the "Save As Reason" textbox/validation depending on whether the user is using a custom reason or not.
-                ReasonListBox.Attributes.Add("onchange", "if(document.getElementById('" + ReasonListBox.ClientID + "').options[document.getElementById('" + ReasonListBox.ClientID + "').selectedIndex].text != '" + SR.CustomReason + "') { document.getElementById('" + ReasonSavePanel.ClientID + "').style.display = 'none'; document.getElementById('" + SaveReasonAsName.ClientID + "').style.display = 'none'; } else { document.getElementById('" + ReasonSavePanel.ClientID + "').style.display = 'inline'; document.getElementById('" + SaveReasonAsName.ClientID + "').style.display = 'inline'; }");
+                ReasonListBox.Attributes.Add("onchange", "if(document.getElementById('" + ReasonListBox.ClientID + "').options[document.getElementById('" + ReasonListBox.ClientID + "').selectedIndex].text != '" + SR.CustomReason + "') { document.getElementById('" + ReasonSavePanel.ClientID + "').style.display = 'none'; document.getElementById('" + SaveReasonAsName.ClientID + "').style.display = 'none'; } else { document.getElementById('" + ReasonSavePanel.ClientID + "').style.display = 'table-row'; document.getElementById('" + SaveReasonAsName.ClientID + "').style.display = 'inline'; }");
                 ReasonListBox.SelectedIndexChanged += delegate
                 {
                     if (ReasonListBox.SelectedItem.Text == SR.CustomReason) SaveReasonAsNameValidator.Enabled = true;
@@ -229,12 +230,12 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
         {
             ReasonListBox.Items.Clear();
 
-            ICannedTextEntityBroker broker = HttpContextData.Current.ReadContext.GetBroker<ICannedTextEntityBroker>();
+			ICannedTextEntityBroker broker = HttpContext.Current.GetSharedPersistentContext().GetBroker<ICannedTextEntityBroker>();
             CannedTextSelectCriteria criteria = new CannedTextSelectCriteria();
             criteria.Category.EqualTo(REASON_CANNEDTEXT_CATEGORY);
             IList<CannedText> list = broker.Find(criteria);
 
-            if (SessionManager.Current.User.IsInRole(Enterprise.Authentication.AuthorityTokens.Study.SaveReason))
+            if (SessionManager.Current.User.IsInRole(AuthorityTokens.Study.SaveReason))
             {
                 ReasonListBox.Items.Add(new ListItem(SR.CustomReason, SR.CustomReasonComment));
             }
@@ -282,7 +283,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
                         	helper.AddStudyParticipantObject(new AuditStudyParticipantObject(
 																	study.StudyInstanceUid, 
 																	study.AccessionNumber ?? string.Empty));
-                        	ServerPlatform.LogAuditMessage(helper);
+                            ServerAuditHelper.LogAuditMessage(helper);
                         }
                         catch (Exception ex)
                         {

@@ -22,11 +22,86 @@
 
 --%>
 
+
 <%@ Control Language="C#" AutoEventWireup="true" Codebehind="AddEditServerRuleDialog.ascx.cs"
 	Inherits="ClearCanvas.ImageServer.Web.Application.Pages.Admin.Configure.ServerRules.AddEditServerRuleDialog" %>
 <%@ Import Namespace="Resources"%>
 <%@ Register Src="~/Controls/UsersGuideLink.ascx" TagPrefix="cc" TagName="HelpLink" %>
 
+<link rel="stylesheet" href="../../../../Scripts/CodeMirror/js/lib/codemirror.css">
+<script type="text/javascript" src="../../../../Scripts/CodeMirror/js/lib/CodeMirror.js"></script>
+<script type="text/javascript" src="../../../../Scripts/CodeMirror/js/mode/xml/xml.js"></script>
+<script type="text/javascript" src="../../../../Scripts/CodeMirror/js/addon/fold/foldcode.js"></script>
+<script type="text/javascript" src="../../../../Scripts/CodeMirror/js/addon/fold/foldgutter.js"></script>
+<script type="text/javascript" src="../../../../Scripts/CodeMirror/js/addon/fold/brace-fold.js"></script>
+<script type="text/javascript" src="../../../../Scripts/CodeMirror/js/addon/fold/xml-fold.js"></script>
+<script type="text/javascript" src="../../../../Scripts/CodeMirror/js/addon/fold/comment-fold.js"></script>
+
+<style type="text/css">
+	.CodeMirror {
+		width: 800px;
+	}
+	.cm-s-default .cm-tag {
+		color: #36880F;
+		font-weight: bold;
+		background: rgba(255, 0, 0, 0);
+		text-shadow: 1px 1px 1px rgb(175, 175, 175);
+	}
+		
+	.cm-s-default .cm-attribute {
+		color: rgb(124, 124, 124);
+	}
+		.cm-s-default .cm-string {
+		color: #0068DA;
+		font-weight: bold;
+	}
+</style>
+
+<script type="text/javascript">
+
+	window.onload = function() {
+		var lastUpdate = new Date().getTime();
+		var lastKeyPress = false;
+		var checkInterval = setInterval(function() {
+			if (lastKeyPress == true) {
+				var currentTime = new Date().getTime();
+				if (currentTime - lastUpdate > 5000) {
+					keepSessionAlive();
+					lastKeyPress = false;
+					lastUpdate = currentTime;
+				}
+			}
+		}, 2500); // 5 seconds
+
+		$(document).keydown(function() {
+			lastKeyPress = true;
+		});
+	};
+
+	function OnRuleXmlTabActivated() {
+		
+		setTimeout(function() {
+			CodeMirrorEditor.refresh();
+		}, 200);
+	}
+	
+	function HighlightXML() {
+		var textBoxId = "<%= RuleXmlTextBox.ClientID %>";
+		var textbox = document.getElementById(textBoxId);
+		CodeMirrorEditor = CodeMirror.fromTextArea(textbox, {
+			mode: { name: "xml", alignCDATA: true },
+			lineNumbers: true,
+			lineWrapping: true,
+			value: textbox.value
+		});
+		
+	}
+	
+	function keepSessionAlive() {
+		var url = '<%= Page.ResolveClientUrl("~/KeepSessionAlive.aspx") %>';
+	    	$.ajax({ type: 'GET', url: url, async: true });
+	}
+</script>
 
 <asp:ScriptManagerProxy runat="server">
 	<Services>
@@ -39,7 +114,7 @@
                 EnableClientScript="true" runat="server" ValidationGroup="AddEditServerRuleValidationGroup" CssClass="DialogValidationErrorMessage" />   			
 			<aspAjax:TabContainer ID="ServerPartitionTabContainer" runat="server" ActiveTabIndex="0"
 				CssClass="DialogTabControl">
-				<aspAjax:TabPanel ID="GeneralTabPanel" runat="server" HeaderText="GeneralTabPanel"
+				<aspAjax:TabPanel ID="GeneralTabPanel" runat="server" HeaderText="GeneralTabPanel" 
 					TabIndex="0" CssClass="DialogTabControl">
 					<ContentTemplate>
 							<table id="Table1" runat="server" width="100%">
@@ -105,7 +180,7 @@
 					</ContentTemplate>
 					<HeaderTemplate><%= Titles.AdminServerRules_AddEditDialog_GeneralTabTitle%></HeaderTemplate>
 				</aspAjax:TabPanel>
-				<aspAjax:TabPanel ID="RuleXmlTabPanel" runat="server" HeaderText="TabPanel2">
+				<aspAjax:TabPanel ID="RuleXmlTabPanel" runat="server" HeaderText="TabPanel2" CssClass="RuleXmlTab" OnClientClick="OnRuleXmlTabActivated">
 					<ContentTemplate>
 							<table width="100%" cellpadding="5" cellspacing="5">
 								<tr>

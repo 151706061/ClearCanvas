@@ -57,10 +57,10 @@ namespace ClearCanvas.ImageViewer.Tools.Standard
 
             try
             {
-                var sourceTransform = (ImageSpatialTransform)((ISpatialTransformProvider)SelectedPresentationImage).SpatialTransform;
-                var transform = (ImageSpatialTransform)((ISpatialTransformProvider)_magnificationImage).SpatialTransform;
+                var sourceTransform = (IImageSpatialTransform)((ISpatialTransformProvider)SelectedPresentationImage).SpatialTransform;
+                var transform = (IImageSpatialTransform)((ISpatialTransformProvider)_magnificationImage).SpatialTransform;
 
-                float scale = sourceTransform.Scale * ToolSettings.Default.MagnificationFactor;
+                float scale = sourceTransform.Scale * ToolSettings.DefaultInstance.MagnificationFactor;
                 transform.ScaleToFit = false;
                 transform.Scale = scale;
                 transform.TranslationX = 0;
@@ -150,14 +150,14 @@ namespace ClearCanvas.ImageViewer.Tools.Standard
         {
             if (_magnificationImage is IAnnotationLayoutProvider)
             {
-                string magFactor = String.Format("{0:F1}x", ToolSettings.Default.MagnificationFactor);
+                string magFactor = String.Format("{0:F1}x", ToolSettings.DefaultInstance.MagnificationFactor);
                 AnnotationLayout layout = new AnnotationLayout();
                 BasicTextAnnotationItem item = new BasicTextAnnotationItem("mag", "mag", "mag", magFactor);
                 AnnotationBox box = new AnnotationBox(new RectangleF(0.8F, 0F, .2F, .05F), item);
                 box.Justification = AnnotationBox.JustificationBehaviour.Right;
                 box.VerticalAlignment = AnnotationBox.VerticalAlignmentBehaviour.Top;
                 layout.AnnotationBoxes.Add(box);
-                ((BasicPresentationImage)_magnificationImage).AnnotationLayout = layout;
+				((IAnnotationLayoutProvider)_magnificationImage).AnnotationLayout = layout;
             }
 
             if (_magnificationImage is IOverlayGraphicsProvider)
@@ -195,7 +195,7 @@ namespace ClearCanvas.ImageViewer.Tools.Standard
             if (!(SelectedPresentationImage is ISpatialTransformProvider))
                 throw new ArgumentException("The image must implement ISpatialTransformProvider", "value");
 
-            if (!(((ISpatialTransformProvider)SelectedPresentationImage).SpatialTransform is ImageSpatialTransform))
+            if (!(((ISpatialTransformProvider)SelectedPresentationImage).SpatialTransform is IImageSpatialTransform))
                 throw new ArgumentException("The image must provide an IImageSpatialTransform", "value");
 
             DisposeMagnificationImage();
@@ -214,68 +214,5 @@ namespace ClearCanvas.ImageViewer.Tools.Standard
                 _magnificationImage = null;
             }
         }
-
-        /*
-        //text doesn't end up looking very good due to interpolation effects.
-        private void AddMagnificationIndicator()
-        {
-            //Ideally, I would just replace the IAnnotationLayoutProvider with a new one that
-            //showed only the mag factor ... but it would actually require framework changes,
-            //so I'll do this for now.
-            string magFactor = String.Format("{0:F2}x", _magnificationFactor);
-
-            SizeF size;
-            Bitmap bitmap = new Bitmap(Width, Height);
-            using (System.Drawing.Graphics graphics = System.Drawing.Graphics.FromImage(bitmap))
-            {
-                using (Font font = new Font("Arial", 10, FontStyle.Bold, GraphicsUnit.Point))
-                {
-                    size = graphics.MeasureString(magFactor, font);
-                }
-            }
-
-            bitmap.Dispose();
-
-            int width = (int) (size.Width + 1) + 4;
-            int height = (int)(size.Height + 1) + 4;
-            int stride = 4*width;
-
-            byte[] buffer = new byte[stride * height];
-            GCHandle bufferHandle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-
-            try
-            {
-                bitmap = new Bitmap(width, height, stride, PixelFormat.Format32bppArgb, bufferHandle.AddrOfPinnedObject());
-                using (System.Drawing.Graphics graphics = System.Drawing.Graphics.FromImage(bitmap))
-                {
-                    graphics.Clear(Color.FromArgb(0, Color.Black));
-
-                    using (Font font = new Font("Arial", 10, FontStyle.Regular, GraphicsUnit.Point))
-                    {
-                        //drop-shadow
-                        using (Brush brush = new SolidBrush(Color.Black))
-                        {
-                            graphics.DrawString(magFactor, font, brush, 1, 1);
-                        }
-						
-                        using (Brush brush = new SolidBrush(Color.WhiteSmoke))
-                        {
-                            graphics.DrawString(magFactor, font, brush, 0, 0);
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                bufferHandle.Free();
-            }
-
-            ColorImageGraphic graphic = new ColorImageGraphic(bitmap.Height, bitmap.Width, buffer);
-            _magnificationImage.SceneGraph.Graphics.Add(graphic);
-            graphic.SpatialTransform.TranslationX = Width - graphic.Columns - 5;
-            graphic.SpatialTransform.TranslationY = 5;
-        }
-        */
-
     }
 }

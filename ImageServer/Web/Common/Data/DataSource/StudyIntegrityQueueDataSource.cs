@@ -25,6 +25,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Web;
 using ClearCanvas.Dicom;
 using ClearCanvas.Enterprise.Core;
 using ClearCanvas.ImageServer.Common;
@@ -175,6 +176,11 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
 
 		#region Public Properties
 
+	    public ServerEntityKey Key
+	    {
+	        get { return TheStudyIntegrityQueueItem != null ? TheStudyIntegrityQueueItem.Key : null; }
+	    }
+
 	    public bool StudyExists
 	    {
             get { return StudySummary != null; }
@@ -270,7 +276,7 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
         {
             if (_storageLocation == null)
             {
-                var studyStorage = StudyStorage.Load(HttpContextData.Current.ReadContext, TheStudyIntegrityQueueItem.StudyStorageKey);
+				var studyStorage = StudyStorage.Load(HttpContext.Current.GetSharedPersistentContext(), TheStudyIntegrityQueueItem.StudyStorageKey);
                 _storageLocation = StudyStorageLocation.FindStorageLocations(studyStorage)[0];
             }
         }
@@ -400,7 +406,7 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
             var summary = new StudyIntegrityQueueSummary();
                 
 			var ssAdaptor = new StudyStorageAdaptor();
-            var storages = ssAdaptor.Get(HttpContextData.Current.ReadContext, item.StudyStorageKey);
+			var storages = ssAdaptor.Get(HttpContext.Current.GetSharedPersistentContext(), item.StudyStorageKey);
             try
             {
                 summary.Reason = item.StudyIntegrityReasonEnum;
@@ -458,8 +464,8 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
 
 
                 // Fetch existing study info. Note: this is done last because the study may not exist.
-                Study study = storages.LoadStudy(HttpContextData.Current.ReadContext);
-                summary.StudySummary = StudySummaryAssembler.CreateStudySummary(HttpContextData.Current.ReadContext, study);
+				Study study = storages.LoadStudy(HttpContext.Current.GetSharedPersistentContext());
+				summary.StudySummary = StudySummaryAssembler.CreateStudySummary(HttpContext.Current.GetSharedPersistentContext(), study);
                 if (summary.StudySummary!=null)
                 {
                     summary.StudyInstanceUid = summary.StudySummary.StudyInstanceUid;
@@ -517,12 +523,11 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
                 {
                     DateTime fromTime = DateTime.Parse(FromInsertTime);
                     DateTime toTime = DateTime.Parse(ToInsertTime);
-                    if (toTime == fromTime) criteria.InsertTime.Between(fromTime, fromTime.AddHours(24));
-                    else criteria.InsertTime.Between(fromTime, toTime.AddHours(24));
+                    criteria.InsertTime.Between(fromTime, toTime.AddHours(24));
                 } else if(!String.IsNullOrEmpty(FromInsertTime))
                 {
                     DateTime fromTime = DateTime.Parse(FromInsertTime);
-                    criteria.InsertTime.MoreThanOrEqualTo(fromTime.AddHours(24));
+                    criteria.InsertTime.MoreThanOrEqualTo(fromTime);
                 } else
                 {
                     DateTime toTime = DateTime.Parse(ToInsertTime);

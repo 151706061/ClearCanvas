@@ -27,7 +27,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Xml;
 using ClearCanvas.Common;
 using ClearCanvas.Common.Utilities;
 using ClearCanvas.Dicom;
@@ -37,13 +36,14 @@ using ClearCanvas.ImageServer.Common;
 using ClearCanvas.ImageServer.Common.Utilities;
 using ClearCanvas.ImageServer.Core;
 using ClearCanvas.ImageServer.Core.Data;
+using ClearCanvas.ImageServer.Core.Helpers;
 using ClearCanvas.ImageServer.Core.Validation;
+using ClearCanvas.ImageServer.Enterprise.Command;
 using ClearCanvas.ImageServer.Model;
 using ClearCanvas.ImageServer.Model.Brokers;
 using ClearCanvas.ImageServer.Model.EntityBrokers;
 using ClearCanvas.ImageServer.Model.Parameters;
 using ClearCanvas.ImageServer.Rules;
-using ClearCanvas.ImageServer.Common.Command;
 using ClearCanvas.Dicom.Utilities.Command;
 using ClearCanvas.ImageServer.Core.ModelExtensions;
 
@@ -213,16 +213,6 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.ReprocessStudy
             Platform.CheckForNullReference(item, "item");
             Platform.CheckForNullReference(item.StudyStorageKey, "item.StudyStorageKey");
 
-            var context = new StudyProcessorContext(StorageLocation);
-            
-            // TODO: Should we enforce the patient's name rule?
-            // If we do, the Study record will have the new patient's name 
-            // but how should we handle the name in the Patient record?
-            bool enforceNameRules = false;
-            var processor = new SopInstanceProcessor(context) { EnforceNameRules = enforceNameRules};
-
-            var seriesMap = new Dictionary<string, List<string>>();
-
             bool successful = true;
             string failureDescription = null;
             
@@ -316,14 +306,26 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.ReprocessStudy
                 
             }
 
+			// As per #12583, Creation of the SopInstanceProcessor should occur after the CleanupDatabase() call.
+			var context = new StudyProcessorContext(StorageLocation, WorkQueueItem);
+
+			// TODO: Should we enforce the patient's name rule?
+			// If we do, the Study record will have the new patient's name 
+			// but how should we handle the name in the Patient record?
+			const bool enforceNameRules = false;
+			var processor = new SopInstanceProcessor(context) { EnforceNameRules = enforceNameRules };
+
+			var seriesMap = new Dictionary<string, List<string>>();
+
             StudyXml studyXml = LoadStudyXml();
 
-            int reprocessedCounter = 0;
+            var reprocessedCounter = 0;
+        	var skippedCount = 0;
             var removedFiles = new List<FileInfo>();
             try
             {
                 // Traverse the directories, process 500 files at a time
-                FileProcessor.Process(StorageLocation.GetStudyPath(), "*.*",
+                var isCancelled = FileProcessor.Process(StorageLocation.GetStudyPath(), "*.*",
                                       delegate(string path, out bool cancel)
                                           {
                                               #region Reprocess File
@@ -353,12 +355,14 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.ReprocessStudy
                                                           {
                                                               Platform.Log(LogLevel.Warn, "SOP Instance UID in {0} appears more than once in the study.", path);
                                                           }
+
+                                                      	skippedCount++;
                                                       }
                                                       else
                                                       {
                                                           Platform.Log(ServerPlatform.InstanceLogLevel, "Reprocessing SOP {0} for study {1}",instanceUid, StorageLocation.StudyInstanceUid);
                                                           string groupId = ServerHelper.GetUidGroup(dicomFile, StorageLocation.ServerPartition, WorkQueueItem.InsertTime);
-                                                          ProcessingResult result = processor.ProcessFile(groupId, dicomFile, studyXml, true, false, null, null);
+                                                          ProcessingResult result = processor.ProcessFile(groupId, dicomFile, studyXml, true, false, null, null, SopInstanceProcessorSopType.ReprocessedSop);
                                                           switch (result.Status)
                                                           {
                                                               case ProcessingStatus.Success:
@@ -417,7 +421,14 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.ReprocessStudy
 
                                               #endregion
 
-                                              cancel = reprocessedCounter >= 500;
+											  if (reprocessedCounter>0 && reprocessedCounter % 200 == 0)
+											  {
+												  Platform.Log(LogLevel.Info, "Reprocessed {0} files for study {1}", reprocessedCounter + skippedCount, StorageLocation.StudyInstanceUid);
+											  }
+
+                                              cancel = reprocessedCounter >= 5000;
+
+											  
                                           }, true);
 
                 if (studyXml != null)
@@ -428,7 +439,7 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.ReprocessStudy
 
                 // Completed if either all files have been reprocessed 
                 // or no more dicom files left that can be reprocessed.
-                _completed = reprocessedCounter == 0;
+				_completed = reprocessedCounter == 0 || !isCancelled;
             }
             catch (Exception e)
             {
@@ -461,6 +472,10 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.ReprocessStudy
                     }
                     else
                     {
+						// Reload the record from the database because referenced entities have been modified since the beginning.
+						// Need to reload because we are passing the location to the rule engine.
+						StorageLocation = CollectionUtils.FirstElement<StudyStorageLocation>(StudyStorageLocation.FindStorageLocations(item.ServerPartitionKey, StorageLocation.StudyInstanceUid), null);
+
                         LogHistory();
 
                         // Run Study / Series Rules Engine.
@@ -506,7 +521,7 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.ReprocessStudy
                         foreach (var entry in _additionalFilesToProcess)
                         {
                             var path = FilesystemDynamicPath.Parse(entry);
-                            var realPath = path.ConvertToAbsolutePath(this.StorageLocation);
+                            var realPath = path.ConvertToAbsolutePath(StorageLocation);
 
                             try
                             {
@@ -540,11 +555,11 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.ReprocessStudy
                                 _queueData.AdditionalFiles.Remove(entry);
 
                             }
-                            catch (FileNotFoundException ex)
+                            catch (FileNotFoundException)
                             {
                                 throw; // File is missing. Better leave decision making to the user.
                             }
-                            catch (DirectoryNotFoundException ex)
+                            catch (DirectoryNotFoundException)
                             {
                                 // ignore?
                             }
@@ -555,11 +570,8 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.ReprocessStudy
                     {
                         // update the list so we don't have to reprocess again when the WQI resumes (that will cause problem because we may have moved the files somewhere else)
                         SaveState(WorkQueueItem, _queueData);
-                    }
-                
-                }
-
-                
+                    }                
+                }                
             }
         }
 
@@ -579,7 +591,6 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.ReprocessStudy
             using (var processor = new ServerCommandProcessor("Move file back to incoming folder"))
             {
                 var fileInfo = new FileInfo(path);
-                const string folder = "FromWorkQueue";
                 var incomingPath = GetServerPartitionIncomingFolder();
                 incomingPath = Path.Combine(incomingPath, "FromWorkQueue");
                 incomingPath = Path.Combine(incomingPath, StorageLocation.StudyInstanceUid);
@@ -599,11 +610,6 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.ReprocessStudy
                 Platform.Log(LogLevel.Info, "File {0} has been moved to the incoming folder.", path);
 
             }
-        }
-
-        private void ProcessAdditionalFolder(string path)
-        {
-            Platform.Log(LogLevel.Info, "Reprocessing folder {0}", path);
         }
 
         private void LogRemovedFiles(List<FileInfo> removedFiles)
@@ -672,7 +678,7 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.ReprocessStudy
                                         User = _queueData.ChangeLog != null ? _queueData.ChangeLog.User : "Unknown"
                                     };
 
-                StudyHistory history = ServerPlatform.CreateStudyHistoryRecord(ctx, StorageLocation, null, StudyHistoryTypeEnum.Reprocessed, null, changeLog);
+                StudyHistory history = StudyHistoryHelper.CreateStudyHistoryRecord(ctx, StorageLocation, null, StudyHistoryTypeEnum.Reprocessed, null, changeLog);
                 if (history != null)
                     ctx.Commit();
             }
@@ -680,11 +686,11 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.ReprocessStudy
 
         private void SaveStudyXml(StudyXml studyXml)
         {
-            XmlDocument doc = studyXml.GetMemento(new StudyXmlOutputSettings());
+            var theMemento = studyXml.GetMemento(new StudyXmlOutputSettings());
             using (FileStream xmlStream = FileStreamOpener.OpenForSoleUpdate(StorageLocation.GetStudyXmlPath(), FileMode.Create),
                                       gzipStream = FileStreamOpener.OpenForSoleUpdate(StorageLocation.GetCompressedStudyXmlPath(), FileMode.Create))
             {
-                StudyXmlIo.WriteXmlAndGzip(doc, xmlStream, gzipStream);
+                StudyXmlIo.WriteXmlAndGzip(theMemento, xmlStream, gzipStream);
                 xmlStream.Close();
                 gzipStream.Close();
             }
@@ -737,7 +743,7 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.ReprocessStudy
                 foreach (var entry in list)
                 {
                     var path = FilesystemDynamicPath.Parse(entry);
-                    var realPath = path.ConvertToAbsolutePath(this.StorageLocation);
+                    var realPath = path.ConvertToAbsolutePath(StorageLocation);
                     _additionalFilesToProcess.Add(realPath);
                 }
             }

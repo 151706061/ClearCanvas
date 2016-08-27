@@ -39,8 +39,11 @@ namespace ClearCanvas.ImageViewer.Rendering
 	/// use this class in tandem with the <see cref="RendererFactoryBase"/>, although it
 	/// is not required that you do so.
 	/// </remarks>
+	/// <seealso cref="RendererBase2{TRenderingSurface,TPresentationImage}"/>
+	/// <seealso cref="RendererFactoryBase"/>
 	public abstract class RendererBase : IRenderer
 	{
+		private readonly string _rendererTypeId;
 		private DrawMode _drawMode;
 		private CompositeGraphic _sceneGraph;
 		private IRenderingSurface _surface;
@@ -50,6 +53,19 @@ namespace ClearCanvas.ImageViewer.Rendering
 		/// </summary>
 		protected RendererBase()
 		{
+			_rendererTypeId = GetType().Name;
+		}
+
+		~RendererBase()
+		{
+			try
+			{
+				Dispose(false);
+			}
+			catch (Exception ex)
+			{
+				Platform.Log(LogLevel.Error, ex);
+			}
 		}
 
 		/// <summary>
@@ -101,11 +117,11 @@ namespace ClearCanvas.ImageViewer.Rendering
 		{
 			try
 			{
-				Initialize(drawArgs); 
-				
+				Initialize(drawArgs);
+
 				if (drawArgs.RenderingSurface.ClientRectangle.Width == 0 || drawArgs.RenderingSurface.ClientRectangle.Height == 0)
 					return;
-								
+
 				if (DrawMode == DrawMode.Render)
 					Render();
 				else
@@ -125,7 +141,12 @@ namespace ClearCanvas.ImageViewer.Rendering
 		/// <summary>
 		/// Factory method for an <see cref="IRenderingSurface"/>.
 		/// </summary>
-		public abstract IRenderingSurface GetRenderingSurface(IntPtr windowID, int width, int height);
+		public abstract IRenderingSurface GetRenderingSurface(IntPtr windowId, int width, int height);
+
+		public virtual IRenderingSurface CreateRenderingSurface(IntPtr windowId, int width, int height, RenderingSurfaceType type)
+		{
+			return GetRenderingSurface(windowId, width, height);
+		}
 
 		/// <summary>
 		/// Initializes the member variables before calling <see cref="Render"/> or <see cref="Refresh"/>.
@@ -170,31 +191,31 @@ namespace ClearCanvas.ImageViewer.Rendering
 					graphic.OnDrawing();
 
 					if (graphic is CompositeGraphic)
-						DrawSceneGraph((CompositeGraphic)graphic);
+						DrawSceneGraph((CompositeGraphic) graphic);
 					else if (graphic is ImageGraphic)
-						DrawImageGraphic((ImageGraphic)graphic);
+						DrawImageGraphic((ImageGraphic) graphic);
 					else if (graphic is LinePrimitive)
-						DrawLinePrimitive((LinePrimitive)graphic);
+						DrawLinePrimitive((LinePrimitive) graphic);
 					else if (graphic is InvariantLinePrimitive)
-						DrawInvariantLinePrimitive((InvariantLinePrimitive)graphic);
-					else if (graphic is CurvePrimitive)
-						DrawCurvePrimitive((CurvePrimitive)graphic);
+						DrawInvariantLinePrimitive((InvariantLinePrimitive) graphic);
+					else if (graphic is SplinePrimitive)
+						DrawSplinePrimitive((SplinePrimitive) graphic);
 					else if (graphic is RectanglePrimitive)
-						DrawRectanglePrimitive((RectanglePrimitive)graphic);
+						DrawRectanglePrimitive((RectanglePrimitive) graphic);
 					else if (graphic is InvariantRectanglePrimitive)
-						DrawInvariantRectanglePrimitive((InvariantRectanglePrimitive)graphic);
+						DrawInvariantRectanglePrimitive((InvariantRectanglePrimitive) graphic);
 					else if (graphic is EllipsePrimitive)
-						DrawEllipsePrimitive((EllipsePrimitive)graphic);
+						DrawEllipsePrimitive((EllipsePrimitive) graphic);
 					else if (graphic is InvariantEllipsePrimitive)
-						DrawInvariantEllipsePrimitive((InvariantEllipsePrimitive)graphic);
+						DrawInvariantEllipsePrimitive((InvariantEllipsePrimitive) graphic);
 					else if (graphic is ArcPrimitive)
-						DrawArcPrimitive((IArcGraphic)graphic);
+						DrawArcPrimitive((IArcGraphic) graphic);
 					else if (graphic is InvariantArcPrimitive)
-						DrawArcPrimitive((IArcGraphic)graphic);
+						DrawArcPrimitive((IArcGraphic) graphic);
 					else if (graphic is PointPrimitive)
-						DrawPointPrimitive((PointPrimitive)graphic);
+						DrawPointPrimitive((PointPrimitive) graphic);
 					else if (graphic is InvariantTextPrimitive)
-						DrawTextPrimitive((InvariantTextPrimitive)graphic);
+						DrawTextPrimitive((InvariantTextPrimitive) graphic);
 				}
 			}
 		}
@@ -204,28 +225,30 @@ namespace ClearCanvas.ImageViewer.Rendering
 		/// </summary>
 		protected void DrawTextOverlay(IPresentationImage presentationImage)
 		{
-			CodeClock clock = new CodeClock();
+#if DEBUG
+            CodeClock clock = new CodeClock();
 			clock.Start();
-
-			if (presentationImage == null || !(presentationImage is IAnnotationLayoutProvider))
+#endif
+		    var layoutProvider = presentationImage as IAnnotationLayoutProvider;
+			if (layoutProvider == null)
 				return;
 
-			IAnnotationLayout layout = ((IAnnotationLayoutProvider)presentationImage).AnnotationLayout;
+            var layout = layoutProvider.AnnotationLayout;
 			if (layout == null || !layout.Visible)
 				return;
 
 			foreach (AnnotationBox annotationBox in layout.AnnotationBoxes)
 			{
-				if (annotationBox.Visible)
-				{
-					string annotationText = annotationBox.GetAnnotationText(presentationImage);
-					if (!String.IsNullOrEmpty(annotationText))
-						DrawAnnotationBox(annotationText, annotationBox);
-				}
-			}
+			    if (!annotationBox.Visible) continue;
 
+			    string annotationText = annotationBox.GetAnnotationText(presentationImage);
+			    if (!String.IsNullOrEmpty(annotationText))
+			        DrawAnnotationBox(annotationText, annotationBox);
+			}
+#if DEBUG
 			clock.Stop();
-			PerformanceReportBroker.PublishReport("RendererBase", "DrawTextOverlay", clock.Seconds);
+			PerformanceReportBroker.PublishReport(_rendererTypeId, "DrawTextOverlay", clock.Seconds);
+#endif
 		}
 
 		/// <summary>
@@ -244,9 +267,9 @@ namespace ClearCanvas.ImageViewer.Rendering
 		protected abstract void DrawInvariantLinePrimitive(InvariantLinePrimitive line);
 
 		/// <summary>
-		/// Draws a <see cref="CurvePrimitive"/>. Must be overridden and implemented.
+		/// Draws a <see cref="SplinePrimitive"/>. Must be overridden and implemented.
 		/// </summary>
-		protected abstract void DrawCurvePrimitive(CurvePrimitive curve);
+		protected abstract void DrawSplinePrimitive(SplinePrimitive spline);
 
 		/// <summary>
 		/// Draws a <see cref="RectanglePrimitive"/>.  Must be overridden and implemented.
@@ -288,38 +311,12 @@ namespace ClearCanvas.ImageViewer.Rendering
 		/// </summary>
 		protected abstract void DrawAnnotationBox(string annotationText, AnnotationBox annotationBox);
 
-		/// <summary>
-		/// Draws an error message in the Scene Graph's client area of the screen.
-		/// </summary>
-		/// <remarks>
-		/// <para>
-		/// This method was deprecated in favour of allowing the render client code to handle errors in
-		/// a manner suitable for the context in which it is called. For example, the view control for an
-		/// <see cref="ITile"/> may wish to display the error message in the tile's client area <i>without
-		/// crashing the control</i>, whereas an image export routine may wish to notify the user via an error
-		/// dialog and have the export output <i>fail to be created</i>. Automated routines (such as unit
-		/// tests) may even wish that the exception bubble all the way to the top for debugging purposes.
-		/// </para>
-		/// <para>
-		/// For these reasons, this method is no longer called by <see cref="RendererBase"/>, although
-		/// individual renderer implementations may still render error messages if, even after consideration
-		/// of the above listed scenarios, it is determined that the exception should be handled internally.
-		/// </para>
-		/// </remarks>
-		[Obsolete("Renderer implementations are no longer responsible for handling render pipeline errors.")]
-		protected virtual void ShowErrorMessage(string message) {}
-
 		#region Disposal
 
 		/// <summary>
 		/// Dispose method.  Inheritors should override this method to do any additional cleanup.
 		/// </summary>
-		protected virtual void Dispose(bool disposing)
-		{
-			if (disposing)
-			{
-			}
-		}
+		protected virtual void Dispose(bool disposing) {}
 
 		#region IDisposable Members
 
@@ -333,13 +330,14 @@ namespace ClearCanvas.ImageViewer.Rendering
 				Dispose(true);
 				GC.SuppressFinalize(this);
 			}
-			catch(Exception e)
+			catch (Exception e)
 			{
 				Platform.Log(LogLevel.Error, e);
 			}
 		}
 
 		#endregion
+
 		#endregion
 	}
 }

@@ -66,10 +66,10 @@ namespace ClearCanvas.ImageServer.Services.Archiving.Hsm
 				File.Move(_storageFile, _backupFile);
 				_fileBackedup = true;
 			}
-            using (var zipService = Platform.GetService<IZipService>())
+		    var zipService = Platform.GetService<IZipService>();
+            using (var zipReader = zipService.OpenRead(_zipFile))
             {
-                zipService.OpenRead(_zipFile);
-                zipService.Extract(_sourceFile, _destinationFolder, true);
+                zipReader.Extract(_sourceFile, _destinationFolder, true);
 			}
 		}
 
@@ -86,8 +86,7 @@ namespace ClearCanvas.ImageServer.Services.Archiving.Hsm
 
 		public void Dispose()
 		{
-			if (File.Exists(_backupFile))
-				File.Delete(_backupFile);
+			File.Delete(_backupFile);
 		}
 	}
 }

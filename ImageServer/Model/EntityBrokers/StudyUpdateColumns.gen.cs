@@ -31,7 +31,7 @@ namespace ClearCanvas.ImageServer.Model.EntityBrokers
     using ClearCanvas.Dicom;
     using ClearCanvas.ImageServer.Enterprise;
 
-   public class StudyUpdateColumns : EntityUpdateColumns
+   public partial class StudyUpdateColumns : EntityUpdateColumns
    {
        public StudyUpdateColumns()
        : base("Study")
@@ -63,6 +63,26 @@ namespace ClearCanvas.ImageServer.Model.EntityBrokers
         public Int32 NumberOfStudyRelatedInstances
         {
             set { SubParameters["NumberOfStudyRelatedInstances"] = new EntityUpdateColumn<Int32>("NumberOfStudyRelatedInstances", value); }
+        }
+        [EntityFieldDatabaseMappingAttribute(TableName="Study", ColumnName="QCStatusEnum")]
+        public QCStatusEnum QCStatusEnum
+        {
+            set { SubParameters["QCStatusEnum"] = new EntityUpdateColumn<QCStatusEnum>("QCStatusEnum", value); }
+        }
+        [EntityFieldDatabaseMappingAttribute(TableName="Study", ColumnName="QCOutput")]
+        public String QCOutput
+        {
+            set { SubParameters["QCOutput"] = new EntityUpdateColumn<String>("QCOutput", value); }
+        }
+        [EntityFieldDatabaseMappingAttribute(TableName="Study", ColumnName="QCUpdateTimeUtc")]
+        public DateTime? QCUpdateTimeUtc
+        {
+            set { SubParameters["QCUpdateTimeUtc"] = new EntityUpdateColumn<DateTime?>("QCUpdateTimeUtc", value); }
+        }
+        [EntityFieldDatabaseMappingAttribute(TableName="Study", ColumnName="OrderGUID")]
+        public ServerEntityKey OrderKey
+        {
+            set { SubParameters["OrderKey"] = new EntityUpdateColumn<ServerEntityKey>("OrderKey", value); }
         }
         [EntityFieldDatabaseMappingAttribute(TableName="Study", ColumnName="StudySizeInKB")]
         public Decimal StudySizeInKB

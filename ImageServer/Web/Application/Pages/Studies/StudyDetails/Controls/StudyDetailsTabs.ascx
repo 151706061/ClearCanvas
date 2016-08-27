@@ -32,7 +32,6 @@
 <%@ Register Src="ArchivePanel.ascx" TagName="ArchivePanel" TagPrefix="localAsp" %>
 <%@ Register Src="HistoryPanel.ascx" TagName="HistoryPanel" TagPrefix="localAsp" %>
 <%@ Register Src="StudyIntegrityQueueGridView.ascx" TagName="StudyIntegrityQueueGridView" TagPrefix="localAsp" %>
-<%@ Register Src="DataAccessPanel.ascx" TagName="DataAccessPanel" TagPrefix="localAsp" %>
 <%@ Register Src="UpdateAuthorityGroupDialog.ascx" TagName="UpdateAuthorityGroupDialog" TagPrefix="localAsp" %>
 
 <aspAjax:TabContainer ID="StudyDetailsTabContainer" runat="server" ActiveTabIndex="0"
@@ -154,24 +153,6 @@
                 <tr>
                     <td>
                         <localAsp:HistoryPanel ID="HistoryPanel" runat="server" />
-                    </td>
-                </tr>
-            </table>
-        </ContentTemplate>
-    </aspAjax:TabPanel>
-    <aspAjax:TabPanel ID="DataAccessTabPanel" HeaderText="<%$Resources: Titles, DataAccess %>" runat="server">
-        <ContentTemplate>
-            <table width="100%" cellpadding="4" cellspacing="0"  class="StudyDetailsTabContent">
-                <tr>
-                    <td>
-                        <div style="padding-top: 5px; padding-left: 1px;" />
-                        <ccUI:ToolbarButton runat="server" ID="UpdateAuthorityGroupButton" SkinID="<%$Image:UpdateButton%>" OnClick="UpdateAuthorityGroupButton_Click" />&nbsp;
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td colspan="2">
-                        <localAsp:DataAccessPanel runat="server" ID="DataAccessPanel" />
                     </td>
                 </tr>
             </table>

@@ -28,9 +28,14 @@ using System.Reflection;
 
 namespace ClearCanvas.Common.Configuration
 {
-	internal static class ApplicationSettingsHelper
+	public static class ApplicationSettingsHelper
 	{
-		internal static bool IsLocal(Type settingsClass)
+		/// <summary>
+		/// Gets a value indicating whether the specified settings class stores its settings locally or not.
+		/// </summary>
+		/// <param name="settingsClass"></param>
+		/// <returns>True if the specified settings class stores its settings locally.</returns>
+		internal static bool IsLocallyStored(Type settingsClass)
 		{
 			var attributes = settingsClass.GetCustomAttributes(typeof(SettingsProviderAttribute), true);
 			if (attributes.Length == 0)
@@ -75,23 +80,29 @@ namespace ClearCanvas.Common.Configuration
 
 		public static Type GetSettingsClass(SettingsGroupDescriptor group)
 		{
-			Type settingsClass = Type.GetType(group.AssemblyQualifiedTypeName, true);
+			var settingsClass = Type.GetType(group.AssemblyQualifiedTypeName, true);
 			CheckType(settingsClass);
 		    return settingsClass;
 		}
 
-		public static ApplicationSettingsBase GetSettingsClassInstance(Type settingsClass)
+		public static ApplicationSettingsBase GetDefaultInstance(Type settingsClass)
 		{
-			CheckType(settingsClass);
+            CheckType(settingsClass);
 
-			const BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy;
-			PropertyInfo defaultProperty = settingsClass.GetProperty("Default", bindingFlags);
+            const BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy;
+            var defaultProperty = settingsClass.GetProperty("Default", bindingFlags);
 
-			if (defaultProperty != null)
-				return (ApplicationSettingsBase)defaultProperty.GetValue(null, null);
+            if (defaultProperty != null)
+                return (ApplicationSettingsBase)defaultProperty.GetValue(null, null);
 
+		    return null;
+		}
+
+	    public static ApplicationSettingsBase GetSettingsClassInstance(Type settingsClass)
+	    {
+	        var defaultInstance = GetDefaultInstance(settingsClass);
 			//try to return an instance of the class
-			return (ApplicationSettingsBase)Activator.CreateInstance(settingsClass);
+			return defaultInstance ?? (ApplicationSettingsBase)Activator.CreateInstance(settingsClass);
 		}
 	}
 }

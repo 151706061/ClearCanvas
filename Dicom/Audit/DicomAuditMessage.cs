@@ -23,7 +23,8 @@
 #endregion
 
 using System;
-using ClearCanvas.Common.Utilities;
+using System.Globalization;
+using System.Linq;
 
 namespace ClearCanvas.Dicom.Audit
 {
@@ -35,7 +36,7 @@ namespace ClearCanvas.Dicom.Audit
     public partial class EventID
     {
         public static EventID ApplicationActivity = new EventID("110100", "DCM", "Application Activity", "Application audit event");
-        public static EventID AuditLogUsed = new EventID("110101", "DCM", "	Audit Log Used	", "Audit Log Used audit event");
+        public static EventID AuditLogUsed = new EventID("110101", "DCM", "Audit Log Used", "Audit Log Used audit event");
         public static EventID BeginTransferringDICOMInstances = new EventID("110102", "DCM", "Begin Transferring DICOM Instances", "Begin Storing DICOM Instances audit event");
         public static EventID DICOMInstancesAccessed = new EventID("110103", "DCM", "DICOM Instances Accessed", "DICOM Instances created, read, updated, or deleted audit event");
         public static EventID DICOMInstancesTransferred = new EventID("110104", "DCM", "DICOM Instances Transferred", "Storage of DICOM Instances complete audit event");
@@ -49,8 +50,16 @@ namespace ClearCanvas.Dicom.Audit
         public static EventID PatientRecord = new EventID("110110", "DCM", "Patient Record", "Patient Record audit event");
         public static EventID ProcedureRecord = new EventID("110111", "DCM", "Procedure Record", "Procedure Record audit event");
         public static EventID NetworkEntry = new EventID("110108", "DCM", "Network Entry", "Network Entry audit event");
+		public static EventID HealthServicesProvisionEvent = new EventID("IHE0001", "IHE", "Health Services Provision Event", "Health services scheduled and performed within an instance or episode of care. This includes scheduling, initiation, updates or amendments, performing or completing the act, and cancellation.");
+		public static EventID MedicationEvent = new EventID("IHE0002", "IHE", "Medication Event","Medication orders and administration within an instance or episode of care. This includes initial order, dispensing, delivery, and cancellation.");
+		public static EventID PatientCareResourceAssignment = new EventID("IHE0003", "IHE", "Patient Care Resource Assignment", "Staffing or participant assignment actions relevant to the assignment of healthcare professionals, caregivers attending physician, residents, medical students, consultants, etc. to a patient It also includes change in assigned role or authorization, e.g., relative to healthcare status change, and de-assignment.");
+		public static EventID PatientCareEpisode = new EventID("IHE0004", "IHE", "Patient Care Episode","Specific patient care episodes or problems that occur within an instance of care. This includes initial assignment, updates or amendments, resolution, completion, and cancellation.");
+		public static EventID PatientCareProtocol = new EventID("IHE0005", "IHE", "Patient Care Protocol","Patient association with a care protocol. This includes initial assignment, scheduling, updates or amendments, completion, and cancellation");
+		public static EventID CCHealthcareDataEvent = new EventID("CC001","ClearCanvas","Healthcare Data Event", "Event to signal when healthcare data has been updated");
+		public static EventID CCHealthcareDataDeleted = new EventID("CC002", "ClearCanvas", "Healthcare Data Deleted", "Event to signal when healthcare data has been deleted");
+		public static EventID CCHealthcareDataSearch = new EventID("CC003", "ClearCanvas", "Search Event", "Event to signal when healthcare data has been searched");
 
-        public EventID(string _code, string _codeSystemNameField,
+		public EventID(string _code, string _codeSystemNameField,
                        string _displayNameField, string description)
         {
             codeSystemName = _codeSystemNameField;
@@ -147,6 +156,7 @@ namespace ClearCanvas.Dicom.Audit
         public static ParticipantObjectIDTypeCode StudyInstanceUID = new ParticipantObjectIDTypeCode("110180", "DCM", "Study Instance UID", "Study Instance UID Participant Object ID type");
         public static ParticipantObjectIDTypeCode ClassUID = new ParticipantObjectIDTypeCode("110181", "DCM", "SOP Class UID", "SOP Class UID Participant Object ID type");
         public static ParticipantObjectIDTypeCode NodeID = new ParticipantObjectIDTypeCode("110182", "DCM", "Node ID", "ID of a node that is a participant object of an audit message");
+		public static ParticipantObjectIDTypeCode VfsPath = new ParticipantObjectIDTypeCode("CCPO001","ClearCanvas","VFS Path", "Virtual Filesystem Path of an object that is a participant object of an audit message");
 
         public ParticipantObjectIDTypeCode(string _code, string _codeSystemNameField,
                           string _displayNameField, string description)
@@ -285,8 +295,8 @@ namespace ClearCanvas.Dicom.Audit
 
 			if (auditSource.AuditSourceType.HasValue)
 			{
-				AuditSourceTypeCode = new string[1];
-				AuditSourceTypeCode[0] = auditSource.AuditSourceType.Value.ToString();
+				// Note this was being encoded as the string representation of the enumerated value, and it shoudl be encoded as a numeric value
+				code = ((int)auditSource.AuditSourceType.Value).ToString(CultureInfo.InvariantCulture);
 			}
 		}
         public AuditSourceIdentificationContents(string sourceId)
@@ -413,9 +423,7 @@ namespace ClearCanvas.Dicom.Audit
 
 			if (item.SopClassDictionary != null && item.SopClassDictionary.Count > 0)
 			{
-                // TODO: right now the schema only allows one SOP Class. It nees to be fixed.
-                var sopClass = CollectionUtils.FirstElement(item.SopClassDictionary.Values);
-                SOPClass = new ParticipantObjectDescriptionTypeSOPClass(sopClass.UID,sopClass.NumberOfInstances);
+				SOPClass = item.SopClassDictionary.Values.Select(sopClass => new ParticipantObjectDescriptionTypeSOPClass(sopClass.UID, sopClass.NumberOfInstances)).ToArray();
 			}
 		}
 	}

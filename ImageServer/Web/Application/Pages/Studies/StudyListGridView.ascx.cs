@@ -23,13 +23,21 @@
 #endregion
 
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
+using System.Web;
+using System.Web.UI.HtmlControls;
 using System.Web.UI.WebControls;
+using ClearCanvas.Common;
+using ClearCanvas.ImageServer.Common.Authentication;
+using ClearCanvas.ImageServer.Enterprise;
 using ClearCanvas.ImageServer.Model;
 using ClearCanvas.ImageServer.Web.Application.Controls;
+using ClearCanvas.ImageServer.Web.Common;
 using ClearCanvas.ImageServer.Web.Common.Data.DataSource;
 using Resources;
+using SR = Resources.SR;
 
 namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
 {
@@ -46,11 +54,11 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
         #region Private members
         // list of studies to display
         private IList<StudySummary> _studies;
-        private ServerPartition _partition;
-        private Unit _height;
+	    private Unit _height;
     	private StudyDataSource _dataSource;
-        private Dictionary<string, StudySummary> _studyDictionary = new Dictionary<string, StudySummary>();
-        #endregion Private members
+	    private List<StudySummary> _selectedStudies;
+
+	    #endregion Private members
 
         #region Public properties
 
@@ -81,37 +89,22 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
 			}
 		}
 
-        public ServerPartition Partition
-        {
-            set { _partition = value; }
-            get { return _partition; }
-        }
+	    public ServerPartition Partition { get; set; }
 
-        /// <summary>
-        /// Gets/Sets the current selected device.
+	    /// <summary>
+        /// Gets/Sets the current selected studies.
         /// </summary>
         public IList<StudySummary> SelectedStudies
         {
             get
             {
-                if(!StudyListControl.IsDataBound) StudyListControl.DataBind();
+				if (_selectedStudies==null)
+					LoadSelectedStudies();
 
-                if (_studyDictionary.Count == 0)
-                    return null;
-
-                string[] rows = StudyListControl.SelectedDataKeys;
-                if (rows == null || rows.Length == 0)
-                    return null;
-
-				IList<StudySummary> studies = new List<StudySummary>();
-                for(int i=0; i<rows.Length; i++)
-                {
-                    studies.Add(_studyDictionary[rows[i]]);
-                }
-
-                return studies;
+				return _selectedStudies.OrderBy(x => x.PatientsName).ToList();
             }
         }
+
 
         /// <summary>
         /// Gets/Sets the list of devices rendered on the screen.
@@ -125,10 +118,6 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
             set
             {
                 _studies = value;
-                foreach(StudySummary study in _studies)
-                {
-                    _studyDictionary.Add(study.Key.ToString(), study);
-                }
             }
         }
 
@@ -163,8 +152,13 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
 
         public bool DisplayVetTags()
         {
-            return Thread.CurrentPrincipal.IsInRole(Enterprise.Authentication.AuthorityTokens.Study.VetTags);
+            return Thread.CurrentPrincipal.IsInRole(AuthorityTokens.Study.VetTags);
         }
+
+		public bool DisplayQCColumn
+		{
+			get { return false; }
+		}
 
         #endregion
   
@@ -206,7 +200,13 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
                     else if (f.DataField.Equals("Breed"))
                         f.Visible = true;
                 }
-            } 
+            }
+
+			var col = StudyListControl.Columns.OfType<TemplateField>().FirstOrDefault(c => c.HeaderText.Equals(ColumnHeaders.QCStatus));
+			if (col != null)
+			{
+				col.Visible = DisplayQCColumn;
+			}
 
 
             if(IsPostBack || Page.IsAsync)
@@ -259,6 +259,29 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
                         var status = (Label) row.FindControl("StudyStatusEnum");
                         status.Text = ServerEnumDescription.GetLocalizedDescription(study.StudyStatusEnum);
 
+
+						var qcStatusLink = (HtmlAnchor)row.FindControl("QCStatusLink");
+						if (qcStatusLink != null)
+						{
+							var processing = study.QueueStudyStateEnum.Equals(QueueStudyStateEnum.ProcessingScheduled) || study.QueueStudyStateEnum.Equals(QueueStudyStateEnum.ReprocessScheduled);
+							if (processing)
+							{
+							    qcStatusLink.InnerText = string.Empty;
+							}
+							else
+							{
+								qcStatusLink.InnerText = study.TheStudy.QCStatusEnum != null
+																? ServerEnumDescription.GetLocalizedDescription(study.TheStudy.QCStatusEnum)
+																: "N/A";
+
+                                if (study.TheStudy.QCStatusEnum!=QCStatusEnum.Processing)
+								    qcStatusLink.HRef = ResolveClientUrl(string.Format("~/Pages/Studies/StudyQCReport.aspx?PartitionAE={0}&StudyUid={1}", study.ThePartition.AeTitle, study.TheStudy.StudyInstanceUid));
+							}
+
+						}
+						
+						
+
                         LinkButton button = (LinkButton) row.FindControl("ReconcileLinkButton");
                         Label label = (Label)row.FindControl("SeparatorLabel");
 
@@ -270,7 +293,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
                             button.PostBackUrl = ImageServerConstants.PageURLs.StudyIntegrityQueuePage +
                                                  "?PatientID=" + study.PatientId + "&PatientName=" + study.PatientsName + "&PartitionKey=" + study.ThePartition.GetKey();
 
-                            button.Enabled = Context.User.IsInRole(Enterprise.Authentication.AuthorityTokens.StudyIntegrityQueue.Search);
+                            button.Enabled = Context.User.IsInRole(AuthorityTokens.StudyIntegrityQueue.Search);
                         }
                         else
                         {
@@ -291,7 +314,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
                                                          "?PatientID=" + Server.UrlEncode(study.PatientId) + "&PatientName=" + Server.UrlEncode(study.PatientsName) + "&PartitionKey=" +
                                                          study.ThePartition.Key;
                                 button.Text = ServerEnumDescription.GetLocalizedDescription(study.QueueStudyStateEnum);
-							    button.Enabled = Context.User.IsInRole(Enterprise.Authentication.AuthorityTokens.RestoreQueue.Search);
+							    button.Enabled = Context.User.IsInRole(AuthorityTokens.RestoreQueue.Search);
 							}
 							else if (study.QueueStudyStateEnum.Equals(QueueStudyStateEnum.ArchiveScheduled))
 							{
@@ -299,7 +322,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
                                                          "?PatientID=" + Server.UrlEncode(study.PatientId) + "&PatientName=" + Server.UrlEncode(study.PatientsName) + "&PartitionKey=" +
                                                          study.ThePartition.Key;
                                 button.Text = ServerEnumDescription.GetLocalizedDescription(study.QueueStudyStateEnum);
-							    button.Enabled = Context.User.IsInRole(Enterprise.Authentication.AuthorityTokens.ArchiveQueue.Search);
+							    button.Enabled = Context.User.IsInRole(AuthorityTokens.ArchiveQueue.Search);
 							}
 							else
 							{
@@ -307,7 +330,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
                                                          "?PatientID=" + Server.UrlEncode(study.PatientId) + "&PatientName=" + Server.UrlEncode(study.PatientsName) + "&PartitionKey=" +
                                                          study.ThePartition.Key;
                                 button.Text = ServerEnumDescription.GetLocalizedDescription(study.QueueStudyStateEnum);
-							    button.Enabled = Context.User.IsInRole(Enterprise.Authentication.AuthorityTokens.WorkQueue.Search);
+							    button.Enabled = Context.User.IsInRole(AuthorityTokens.WorkQueue.Search);
 							}
                         } else
                         {
@@ -354,6 +377,59 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies
 
         #endregion
 
-    }
+		#region Private Methods
+
+		/// <summary>
+		/// Gets a list of <see cref="StudySummary"/> correspeonding to the studies currently selected
+		/// </summary>
+		/// <returns></returns>
+		private void LoadSelectedStudies()
+		{
+			_selectedStudies = new List<StudySummary>();
+
+			string[] selectedKeys = StudyListControl.SelectedDataKeys;
+			if (selectedKeys != null)
+			{
+				foreach (var key in selectedKeys)
+				{
+					// Note: the selected study may not be on the current the page. 
+					// This can happens for example when some of the studies which appear before it are deleted from the system.
+					// For this reason, if the selected study does not appear on the current page, we need to load the studies from the database
+					StudySummary studySummary;
+					if (!TryFindStudySummaryOnCurrentPage(key, out studySummary))
+					{
+						var persistentContext = HttpContext.Current.GetSharedPersistentContext();
+						var study = Study.Load(persistentContext, new ServerEntityKey("Study", key));
+						if (study != null)
+						{
+							studySummary = StudySummaryAssembler.CreateStudySummary(persistentContext, study);
+						}
+					}
+
+					if (studySummary != null)
+						_selectedStudies.Add(studySummary);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Tries to find the study that appears on the current page.
+		/// </summary>
+		/// <param name="key"></param>
+		/// <param name="study"></param>
+		/// <returns></returns>
+	    private bool TryFindStudySummaryOnCurrentPage(string key, out StudySummary study)
+	    {
+		    study = null;
+			if (_studies != null && _studies.ToList().Exists(x => x.Key.Key.ToString().Equals(key)))
+				study = _studies.First(x => x.Key.Key.ToString().Equals(key));
+
+		    return study != null;
+
+	    }
+
+		#endregion
+
+	}
 
 }

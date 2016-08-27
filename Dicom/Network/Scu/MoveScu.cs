@@ -143,6 +143,15 @@ namespace ClearCanvas.Dicom.Network.Scu
         	set { _destinationAe = value; }
         }
 
+		/// <summary>
+		/// Gets or sets the MoveMessageId used for the C-MOVE-RQ
+		/// </summary>
+	    public ushort MoveMessageId
+	    {
+			get { return _moveMessageId; }
+			set { _moveMessageId = value; }
+	    }
+
     	public QueryRetrieveLevel CurrentLevel
     	{
     		get
@@ -322,8 +331,11 @@ namespace ClearCanvas.Dicom.Network.Scu
                 if (dicomAttribute.Values != null)
                     dicomAttribute2.Values = dicomAttribute.Values;
             }
-            _moveMessageId = client.NextMessageID();
-            client.SendCMoveRequest(pcid, _moveMessageId, _destinationAe, dicomMessage);
+
+			if (_moveMessageId == 0)
+				_moveMessageId = client.NextMessageID();
+
+			client.SendCMoveRequest(pcid, _moveMessageId, _destinationAe, dicomMessage);
         }
 
         /// <summary>
@@ -463,7 +475,7 @@ namespace ClearCanvas.Dicom.Network.Scu
 		{
 			Status = ScuOperationStatus.TimeoutExpired;
 			FailureDescription =
-				String.Format("Timeout Expired ({0} seconds) for remote host {1} when processing C-MOVE-RQ, aborting connection", association.ReadTimeout/1000,
+				String.Format("Timeout Expired ({0} seconds) for remote AE {1} when processing C-MOVE-RQ, aborting connection", association.ReadTimeout/1000,
 				              RemoteAE);
 			Platform.Log(LogLevel.Error, FailureDescription);
 
@@ -482,29 +494,6 @@ namespace ClearCanvas.Dicom.Network.Scu
 		}
 
     	#endregion
-
-        #region IDisposable Members
-
-        private bool _disposed = false;
-        /// <summary>
-        /// Disposes the specified disposing.
-        /// </summary>
-        /// <param name="disposing">if set to <c>true</c> [disposing].</param>
-        protected override void Dispose(bool disposing)
-        {
-            if (_disposed)
-                return;
-            if (disposing)
-            {
-                // Dispose of other Managed objects, ie
-
-            }
-            // FREE UNMANAGED RESOURCES
-            base.Dispose(true);
-            _disposed = true;
-        }
-        #endregion
-
     }
 
     #region PatientRootFindScu Class

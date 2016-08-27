@@ -23,6 +23,7 @@
 #endregion
 
 using System;
+using ClearCanvas.Dicom;
 using ClearCanvas.Dicom.Iod;
 
 namespace ClearCanvas.ImageServer.Core.Edit
@@ -35,26 +36,42 @@ namespace ClearCanvas.ImageServer.Core.Edit
 
 		public PatientInfo(PatientInfo other)
 		{
-			Name = other.Name;
+			PatientsName = other.PatientsName;
 			PatientId = other.PatientId;
 			IssuerOfPatientId = other.IssuerOfPatientId;
 		}
 
-		public string Name { get; set; }
+		[DicomField(DicomTags.PatientsName, DefaultValue = DicomFieldDefault.Null)]
+		public string PatientsName { get; set; }
 
+		[DicomField(DicomTags.PatientId, DefaultValue = DicomFieldDefault.Null)]
 		public string PatientId { get; set; }
 
+		[DicomField(DicomTags.IssuerOfPatientId, DefaultValue = DicomFieldDefault.Null)]
 		public string IssuerOfPatientId { get; set; }
 
 		#region IEquatable<PatientInfo> Members
 
 		public bool Equals(PatientInfo other)
 		{
-			PersonName name = new PersonName(Name);
-			PersonName otherName = new PersonName(other.Name);
-			return name.Equals(otherName) && String.Equals(PatientId, other.PatientId, StringComparison.InvariantCultureIgnoreCase);
+			var name = new PersonName(PatientsName);
+			var otherName = new PersonName(other.PatientsName);
+			return name.Equals(otherName)
+				&& String.Equals(PatientId, other.PatientId, StringComparison.InvariantCultureIgnoreCase);
 		}
 
 		#endregion
+
+		public bool AreSame(PatientInfo other, bool caseSensitive)
+		{
+			if (other == null)
+				return false;
+
+			var comparison = caseSensitive ? StringComparison.CurrentCulture : StringComparison.CurrentCultureIgnoreCase;
+
+			return string.Equals(this.PatientsName, other.PatientsName, comparison) &&
+			       string.Equals(this.PatientId, other.PatientId, comparison) &&
+				   string.Equals(this.IssuerOfPatientId, other.IssuerOfPatientId, comparison);
+		}
 	}
 }

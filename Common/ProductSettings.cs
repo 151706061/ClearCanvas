@@ -29,6 +29,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using ClearCanvas.Common.Configuration;
+using ClearCanvas.Common.Utilities;
 
 namespace ClearCanvas.Common
 {
@@ -44,17 +45,20 @@ namespace ClearCanvas.Common
 
 		private static void Dump()
 		{
+// ReSharper disable LocalizableElement
 			var settings = new DecryptedProductSettings();
 			Console.WriteLine(@"Name: {0}", settings.Name);
 			Console.WriteLine(@"Family: {0}", settings.FamilyName);
 			Console.WriteLine(@"Product: {0}", settings.Product);
 			Console.WriteLine(@"Component: {0}", settings.Component);
-			Console.WriteLine(@"Edition: {0}", settings.Edition);
+			Console.WriteLine(@"SubComponent: {0}", settings.SubComponent);
+			Console.WriteLine(@"Edition: {0}", settings.DisplayEdition);
 			Console.WriteLine(@"Version: {0}", settings.Version);
 			Console.WriteLine(@"VersionSuffix: {0}", settings.VersionSuffix);
 			Console.WriteLine(@"Release: {0}", settings.Release);
 			Console.WriteLine(@"Copyright:\n{0}", settings.Copyright);
 			Console.WriteLine(@"\nLicense:\n{0}", settings.License);
+// ReSharper restore LocalizableElement
 		}
 
 		#endregion
@@ -66,9 +70,10 @@ namespace ClearCanvas.Common
 	internal class DecryptedProductSettings
 	{
 		private string _name;
-        private string _family;
+		private string _family;
 		private string _product;
 		private string _component;
+		private string _subComponent;
 		private string _edition;
 		private string _release;
 		private Version _version;
@@ -96,20 +101,18 @@ namespace ClearCanvas.Common
 			}
 		}
 
-
-        /// <summary>
-        /// Gets the product's family name.
-        /// </summary>
-        public string FamilyName
-        {
-            get
-            {
-                if (_family == null)
-                    _family = Decrypt(_settings.FamilyName);
-                return _family;
-            }
-        }
-
+		/// <summary>
+		/// Gets the product's family name.
+		/// </summary>
+		public string FamilyName
+		{
+			get
+			{
+				if (_family == null)
+					_family = Decrypt(_settings.FamilyName);
+				return _family;
+			}
+		}
 
 		/// <summary>
 		/// Gets the component name.
@@ -121,6 +124,19 @@ namespace ClearCanvas.Common
 				if (_component == null)
 					_component = Decrypt(_settings.Component);
 				return _component;
+			}
+		}
+
+		/// <summary>
+		/// Gets the Subcomponent name.
+		/// </summary>
+		public string SubComponent
+		{
+			get
+			{
+				if (_subComponent == null)
+					_subComponent = Decrypt(_settings.SubComponent);
+				return _subComponent;
 			}
 		}
 
@@ -235,6 +251,18 @@ namespace ClearCanvas.Common
 			}
 		}
 
+		/// <summary>
+		/// Gets the product edition for display.
+		/// </summary>
+		public string DisplayEdition
+		{
+			get
+			{
+				var edition = Edition;
+				return edition != "<empty>" ? edition : string.Empty;
+			}
+		}
+
 		private static string Decrypt(string @string)
 		{
 			if (String.IsNullOrEmpty(@string))
@@ -243,23 +271,12 @@ namespace ClearCanvas.Common
 			string result;
 			try
 			{
-				byte[] bytes = Convert.FromBase64String(@string);
-				using (MemoryStream dataStream = new MemoryStream(bytes))
+				using (var dataStream = new MemoryStream(Convert.FromBase64String(@string)))
+				using (var cryptoService = new XorCryptoServiceProvider {Key = Encoding.UTF8.GetBytes(@"ClearCanvas"), IV = Encoding.UTF8.GetBytes(@"IsSoCool")})
+				using (var cryptoStream = new CryptoStream(dataStream, cryptoService.CreateDecryptor(), CryptoStreamMode.Read))
+				using (var reader = new StreamReader(cryptoStream, Encoding.UTF8))
 				{
-					RC2CryptoServiceProvider cryptoService = new RC2CryptoServiceProvider();
-					cryptoService.Key = Encoding.UTF8.GetBytes(@"ClearCanvas");
-					cryptoService.IV = Encoding.UTF8.GetBytes(@"IsSoCool");
-					cryptoService.UseSalt = false;
-					using (CryptoStream cryptoStream = new CryptoStream(dataStream, cryptoService.CreateDecryptor(), CryptoStreamMode.Read))
-					{
-						using (StreamReader reader = new StreamReader(cryptoStream, Encoding.UTF8))
-						{
-							result = reader.ReadToEnd();
-							reader.Close();
-						}
-						cryptoStream.Close();
-					}
-					dataStream.Close();
+					result = reader.ReadToEnd().TrimEnd('\0');
 				}
 			}
 			catch (Exception)
@@ -289,17 +306,13 @@ namespace ClearCanvas.Common
 			}
 		}
 
-        /// <summary>
-        /// Gets the product's family name.
-        /// </summary>
-        public static string FamilyName
-        {
-            get
-            {
-                return _settings.FamilyName;
-            }
-        }
-
+		/// <summary>
+		/// Gets the product's family name.
+		/// </summary>
+		public static string FamilyName
+		{
+			get { return _settings.FamilyName; }
+		}
 
 		/// <summary>
 		/// Gets the component name.
@@ -307,6 +320,14 @@ namespace ClearCanvas.Common
 		public static string Component
 		{
 			get { return _settings.Component; }
+		}
+
+		/// <summary>
+		/// Gets the subcomponent name.
+		/// </summary>
+		public static string SubComponent
+		{
+			get { return _settings.SubComponent; }
 		}
 
 		/// <summary>
@@ -366,6 +387,14 @@ namespace ClearCanvas.Common
 		}
 
 		/// <summary>
+		/// Gets the product display edition.
+		/// </summary>
+		public static string DisplayEdition
+		{
+			get { return _settings.DisplayEdition; }
+		}
+
+		/// <summary>
 		/// Gets the component name, optionally with the product edition and/or release type.
 		/// </summary>
 		/// <param name="includeEdition">A value indciating whether or not to include the product edition in the name.</param>
@@ -375,7 +404,6 @@ namespace ClearCanvas.Common
 			return Concatenate(Name, GetNameSuffix(includeEdition, includeRelease));
 		}
 
-
 		/// <summary>
 		/// Gets the suffixes to the component name (i.e. the product edition and/or release type).
 		/// </summary>
@@ -383,7 +411,7 @@ namespace ClearCanvas.Common
 		/// <param name="includeRelease">A value indicating whether or not to include the release type in the name.</param>
 		private static string GetNameSuffix(bool includeEdition, bool includeRelease)
 		{
-			return Concatenate(includeEdition ? Edition : string.Empty, includeRelease && !string.IsNullOrEmpty(Release) ? string.Format(SR.FormatReleaseType, Release) : string.Empty);
+			return Concatenate(includeEdition ? DisplayEdition : string.Empty, includeRelease && !string.IsNullOrEmpty(Release) ? string.Format(SR.FormatReleaseType, Release) : string.Empty);
 		}
 
 		/// <summary>
@@ -411,8 +439,8 @@ namespace ClearCanvas.Common
 		/// <summary>
 		/// Gets the version as a string, optionally with build and revision numbers, and/or version suffix.
 		/// </summary>
-		/// <param name="includeBuildAndRevision">Specifies whether to include the build and revision numbers in the version; false means only the major and minor numbers are included.</param>
-		/// <param name="includeVersionSuffix">Specifies whether to include the version suffix.</param>
+		/// <param name="includeBuildAndRevision">Specifies whether or not to include the build and revision numbers in the version; false means only the major and minor numbers are included.</param>
+		/// <param name="includeVersionSuffix">Specifies whether or not to include the version suffix.</param>
 		public static string GetVersion(bool includeBuildAndRevision, bool includeVersionSuffix)
 		{
 			return GetVersion(includeBuildAndRevision, includeVersionSuffix, false);
@@ -421,10 +449,11 @@ namespace ClearCanvas.Common
 		/// <summary>
 		/// Gets the version as a string, optionally with build and revision numbers, version suffix, and/or release type.
 		/// </summary>
-		/// <param name="includeBuildAndRevision">Specifies whether to include the build and revision numbers in the version; false means only the major and minor numbers are included.</param>
-		/// <param name="includeVersionSuffix">Specifies whether to include the version suffix.</param>
-		/// <param name="includeRelease">A value indicating whether or not to include the release type in the name.</param>
-		public static string GetVersion(bool includeBuildAndRevision, bool includeVersionSuffix, bool includeRelease)
+		/// <param name="includeBuildAndRevision">Specifies whether or not to include the build and revision numbers in the version; false means only the major and minor numbers are included.</param>
+		/// <param name="includeVersionSuffix">Specifies whether or not to include the version suffix.</param>
+		/// <param name="includeRelease">Specifies whether or not to include the release type in the string.</param>
+		/// <param name="includeEdition">Specifies whether or not to include the edition name in the string.</param>
+		public static string GetVersion(bool includeBuildAndRevision, bool includeVersionSuffix, bool includeRelease, bool includeEdition = false)
 		{
 			var version = Version;
 			var versionString = new StringBuilder(string.Format(@"{0}.{1}", version.Major, version.Minor));
@@ -436,17 +465,17 @@ namespace ClearCanvas.Common
 					versionString.AppendFormat(@".{0}", version.Revision);
 			}
 
-			return Concatenate(versionString.ToString(), includeVersionSuffix ? VersionSuffix : string.Empty, includeRelease ? Release : string.Empty);
+			return Concatenate(includeEdition ? DisplayEdition : string.Empty, versionString.ToString(), includeVersionSuffix ? VersionSuffix : string.Empty, includeRelease ? Release : string.Empty);
 		}
-        
-	    public static bool IsEvaluation
-	    {
-            get
-            {
-                TimeSpan? ignore;
-                return LicenseInformation.GetTrialStatus(out ignore);
-            }
-	    }
+
+		public static bool IsEvaluation
+		{
+			get
+			{
+				TimeSpan? ignore;
+				return LicenseInformation.GetTrialStatus(out ignore);
+			}
+		}
 
 		/// <summary>
 		/// Concatenates a number of strings with spaces, skipping empty strings.

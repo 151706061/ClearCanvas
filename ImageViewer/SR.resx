@@ -266,6 +266,7 @@
   </data>
   <data name="FormatAdjustableDataLutDescription" xml:space="preserve">
     <value>{0} [C:{1:F2}% B:{2:F2}%]</value>
+    <comment>Contrast (C) and Brightness (B)</comment>
   </data>
   <data name="FormatAreaPixels" xml:space="preserve">
     <value>Area: {0:F1} pixels</value>
@@ -285,28 +286,35 @@
     <comment>{0} is the overlay source, {1} is the overlay group index, {2} is the overlay frame index</comment>
   </data>
   <data name="FormatDescriptionBasicLinearLut" xml:space="preserve">
-    <value>W:{0} L:{1}</value>
+    <value>W:{0:0.#} L:{1:0.#}</value>
+    <comment>Window (W) and Level (L), i.e. the width and center of the window used to enhance the contrast of a subrange of pixel values</comment>
   </data>
   <data name="FormatDescriptionIdentityVoiLinearLut" xml:space="preserve">
-    <value>W:{0} L:{1} (Identity)</value>
+    <value>W:{0:0.#} L:{1:0.#} (Identity)</value>
+    <comment>Window (W) and Level (L), i.e. the width and center of the window used to enhance the contrast of a subrange of pixel values</comment>
   </data>
   <data name="FormatDescriptionMinMaxCalculatedLinearLut" xml:space="preserve">
-    <value>W:{0} L:{1} (Min/Max)</value>
+    <value>W:{0:0.#} L:{1:0.#} (Min/Max)</value>
+    <comment>Minimum (min) and Maximum (max)</comment>
   </data>
   <data name="FormatDescriptionModalityLutLinear" xml:space="preserve">
     <value>Slope: {0:F2} Int.: {1:F2}</value>
+    <comment>Slope and Intercept (Int), i.e. y=mx+b</comment>
   </data>
   <data name="FormatDescriptionPresentationStateLinearLut" xml:space="preserve">
-    <value>W:{0} L:{1} ({2})</value>
+    <value>W:{0:0.#} L:{1:0.#} ({2})</value>
+    <comment>Window (W) and Level (L), i.e. the width and center of the window used to enhance the contrast of a subrange of pixel values</comment>
   </data>
   <data name="FormatExceptionReason" xml:space="preserve">
     <value>Reason: {0}</value>
   </data>
   <data name="FormatLengthCm" xml:space="preserve">
     <value>{0:F2} cm</value>
+    <comment>SI units - usually untranslated</comment>
   </data>
   <data name="FormatLengthMm" xml:space="preserve">
     <value>{0:F1} mm</value>
+    <comment>SI units - usually untranslated</comment>
   </data>
   <data name="FormatLengthPixels" xml:space="preserve">
     <value>{0:F1} pixels</value>
@@ -328,6 +336,7 @@
   </data>
   <data name="FormatStdDev" xml:space="preserve">
     <value>Std Dev: {0}</value>
+    <comment>Standard Deviation</comment>
   </data>
   <data name="LabelError" xml:space="preserve">
     <value>Error:</value>
@@ -522,7 +531,8 @@ Use image with caution.</value>
     <value>-</value>
   </data>
   <data name="FormatDescriptionNamedLinearLut" xml:space="preserve">
-    <value>W:{0} L:{1} ({2})</value>
+    <value>W:{0:0.#} L:{1:0.#} ({2})</value>
+    <comment>Window (W) and Level (L), i.e. the width and center of the window used to enhance the contrast of a subrange of pixel values</comment>
   </data>
   <data name="LabelUnknownServer" xml:space="preserve">
     <value>Unknown</value>
@@ -618,15 +628,19 @@ Alternately, the study can be brought back online by a PACS administrator.</valu
   </data>
   <data name="LabelUnits1cm" xml:space="preserve">
     <value>1/cm</value>
+    <comment>SI units - usually untranslated</comment>
   </data>
   <data name="LabelUnitsBqml" xml:space="preserve">
     <value>Bq/ml</value>
+    <comment>SI units - usually untranslated</comment>
   </data>
   <data name="LabelUnitsCm2" xml:space="preserve">
     <value>cm²</value>
+    <comment>SI units - usually untranslated</comment>
   </data>
   <data name="LabelUnitsCm2ml" xml:space="preserve">
     <value>cm²/ml</value>
+    <comment>SI units - usually untranslated</comment>
   </data>
   <data name="LabelUnitsCnts" xml:space="preserve">
     <value>counts</value>
@@ -636,30 +650,39 @@ Alternately, the study can be brought back online by a PACS administrator.</valu
   </data>
   <data name="LabelUnitsGml" xml:space="preserve">
     <value>g/ml</value>
+    <comment>SI units - usually untranslated</comment>
   </data>
   <data name="LabelUnitsHU" xml:space="preserve">
     <value>HU</value>
+    <comment>Hounsfield Units - usually untranslated</comment>
   </data>
   <data name="LabelUnitsMgminml" xml:space="preserve">
     <value>mg/min/ml</value>
+    <comment>SI units - usually untranslated</comment>
   </data>
   <data name="LabelUnitsMlg" xml:space="preserve">
     <value>ml/g</value>
+    <comment>SI units - usually untranslated</comment>
   </data>
   <data name="LabelUnitsMlming" xml:space="preserve">
     <value>ml/min/g</value>
+    <comment>SI units - usually untranslated</comment>
   </data>
   <data name="LabelUnitsMlminml" xml:space="preserve">
     <value>ml/min/ml</value>
+    <comment>SI units - usually untranslated</comment>
   </data>
   <data name="LabelUnitsMlml" xml:space="preserve">
     <value>ml/ml</value>
+    <comment>SI units - usually untranslated</comment>
   </data>
   <data name="LabelUnitsMm2" xml:space="preserve">
     <value>mm²</value>
+    <comment>SI units - usually untranslated</comment>
   </data>
   <data name="LabelUnitsOD" xml:space="preserve">
     <value>1/1000 OD</value>
+    <comment>Optical Density units - usually untranslated</comment>
   </data>
   <data name="LabelUnitsPcnt" xml:space="preserve">
     <value>%</value>
@@ -675,17 +698,83 @@ Alternately, the study can be brought back online by a PACS administrator.</valu
   </data>
   <data name="LabelUnitsStddev" xml:space="preserve">
     <value>σ</value>
+    <comment>units of sigmas (i.e. standard deviations)</comment>
   </data>
   <data name="LabelUnitsUmolminml" xml:space="preserve">
     <value>µmol/min/ml</value>
+    <comment>SI units - usually untranslated</comment>
   </data>
   <data name="LabelUnitsUmolml" xml:space="preserve">
     <value>µmol/ml</value>
+    <comment>SI units - usually untranslated</comment>
   </data>
   <data name="LabelUnitsUnspecified" xml:space="preserve">
     <value />
   </data>
   <data name="SuffixFormatKeyImageDisplaySet" xml:space="preserve">
     <value>Key Images</value>
+  </data>
+  <data name="DescriptionPresentationLut" xml:space="preserve">
+    <value>Presentation Lut</value>
+  </data>
+  <data name="MessageVolumeSourceAreNotSupported" xml:space="preserve">
+    <value>The selected images are of an unsupported type. MPR only supports DICOM image SOPs.</value>
+  </data>
+  <data name="MessageVolumeSourceMayBotBeGantrySlewed" xml:space="preserve">
+    <value>The selected images have a gantry slew. MPR only supports gantry tilts.</value>
+  </data>
+  <data name="MessageVolumeSourceMayNotHaveAnisotropicPixels" xml:space="preserve">
+    <value>The selected images have an anisotropic pixel aspect ratio. MPR only supports 1:1 isotropic aspect ratios.</value>
+  </data>
+  <data name="MessageVolumeSourceMinimumThreeImages" xml:space="preserve">
+    <value>Source dataset must contain at least three frames.</value>
+  </data>
+  <data name="MessageVolumeSourceMustBe16BitGreyscale" xml:space="preserve">
+    <value>MPR only supports 16-bit greyscale images.</value>
+  </data>
+  <data name="MessageVolumeSourceMustBeCalibrated" xml:space="preserve">
+    <value>The selected images must be calibrated.</value>
+  </data>
+  <data name="MessageVolumeSourceMustBeEvenlySpacedForMpr" xml:space="preserve">
+    <value>Inconsistent spacing between images. MPR requires evenly spaced images.</value>
+  </data>
+  <data name="MessageVolumeSourceMustBeSameImageOrientationPatient" xml:space="preserve">
+    <value>Each frame in the source dataset must have the same image orientation (Patient).</value>
+  </data>
+  <data name="MessageVolumeSourceMustBeSingleFrameOfReference" xml:space="preserve">
+    <value>Each frame in the source dataset must have the same frame of reference.</value>
+  </data>
+  <data name="MessageVolumeSourceMustBeSingleSeries" xml:space="preserve">
+    <value>Each frame in the source dataset must be from the same series.</value>
+  </data>
+  <data name="MessageVolumeSourceMustBeSingleStudy" xml:space="preserve">
+    <value>Each frame in the source dataset must be from the same study.</value>
+  </data>
+  <data name="MessageVolumeSourceMustBeUniquelyLocatedForMpr" xml:space="preserve">
+    <value>Two images are at same patient location. MPR requires evenly spaced images.</value>
+  </data>
+  <data name="MessageVolumeSourceMustDefineImageOrientationPatient" xml:space="preserve">
+    <value>Each frame in the source dataset must have a defined image orientation (Patient).</value>
+  </data>
+  <data name="MessageVolumeSourceMustSpecifyFrameOfReference" xml:space="preserve">
+    <value>Each frame in the source dataset must specify a frame of reference.</value>
+  </data>
+  <data name="MessageVolumeSourceUnexpectedException" xml:space="preserve">
+    <value>An unexpected exception was encountered while creating the volume.</value>
+  </data>
+  <data name="SuffixFormatMultiframeStackDisplaySet" xml:space="preserve">
+    <value>Stack {0}</value>
+  </data>
+  <data name="MessageVolumeSourceInconsistentRescaleUnits" xml:space="preserve">
+    <value>Each frame in the source dataset must be in the same pixel units.</value>
+  </data>
+  <data name="MessageVolumeSourceInconsistentImageLaterality" xml:space="preserve">
+    <value>Each frame in the source dataset must be of the same anatomical laterality.</value>
+  </data>
+  <data name="FormatAngleDegrees" xml:space="preserve">
+    <value>{0:F1}°</value>
+  </data>
+  <data name="MessageKeyObjectDeserializeFailure" xml:space="preserve">
+    <value>An error has occurred while deserializing the key object selection document.</value>
   </data>
 </root>

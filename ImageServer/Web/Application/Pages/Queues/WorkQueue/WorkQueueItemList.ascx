@@ -1,4 +1,4 @@
-<%--  License
+<%-- License
 
 // Copyright (c) 2013, ClearCanvas Inc.
 // All rights reserved.
@@ -22,16 +22,7 @@
 
 --%>
 
-<%-- License
-
-Copyright (c) 2011, ClearCanvas Inc.
-All rights reserved.
-http://www.clearcanvas.ca
-
-This software is licensed under the Open Software License v3.0.
-For the complete license, see http://www.clearcanvas.ca/OSLv3.0
---%>
-
+<%@ Import Namespace="ClearCanvas.ImageServer.Core.Helpers" %>
 <%@ Import Namespace="ClearCanvas.ImageServer.Web.Common.Utilities" %>
 <%@ Control Language="C#" AutoEventWireup="true" Codebehind="WorkQueueItemList.ascx.cs"
 	Inherits="ClearCanvas.ImageServer.Web.Application.Pages.Queues.WorkQueue.WorkQueueItemList" %>
@@ -80,7 +71,7 @@ For the complete license, see http://www.clearcanvas.ca/OSLv3.0
 							<itemtemplate>
 								<asp:Label ID="StatusLabel" runat="server" Text='<%# Eval("StatusString") %>'></asp:Label>
 								
-								<asp:Image runat="server" Visible='<%# !(Container.DataItem as WorkQueueSummary).TheWorkQueueItem.WorkQueueStatusEnum.Equals(WorkQueueStatusEnum.Failed) && !ServerPlatform.IsActiveWorkQueue((Container.DataItem as WorkQueueSummary).TheWorkQueueItem) %>'  ImageAlign="AbsBottom" ID="StuckIcon" SkinID="WarningSmall"
+								<asp:Image runat="server" Visible='<%# !(Container.DataItem as WorkQueueSummary).TheWorkQueueItem.WorkQueueStatusEnum.Equals(WorkQueueStatusEnum.Failed) && !WorkQueueHelper.IsActiveWorkQueue((Container.DataItem as WorkQueueSummary).TheWorkQueueItem) %>'  ImageAlign="AbsBottom" ID="StuckIcon" SkinID="WarningSmall"
 								    ToolTip="<%$Resources: Tooltips,WorkQueueIsStuck %>"/>
 							</itemtemplate>
 						</asp:TemplateField>

@@ -24,11 +24,14 @@
 
 using System;
 using System.IO;
+using System.Reflection;
 using System.Security;
 using System.Text;
 using System.Xml;
 using System.Xml.Serialization;
 using ClearCanvas.Common;
+using ClearCanvas.Common.Utilities;
+using ClearCanvas.ImageServer.Common.Helpers;
 
 namespace ClearCanvas.ImageServer.Common.Utilities
 {
@@ -43,15 +46,16 @@ namespace ClearCanvas.ImageServer.Common.Utilities
         /// </summary>
         public static string GetXmlDocumentAsString(XmlDocument doc, bool escapeChars)
         {
-            StringWriter sw = new StringWriter();
-            XmlWriterSettings xmlSettings = new XmlWriterSettings();
-
-            xmlSettings.Encoding = Encoding.UTF8;
-            xmlSettings.ConformanceLevel = ConformanceLevel.Fragment;
-            xmlSettings.Indent = true;
-            xmlSettings.NewLineOnAttributes = false;
-            xmlSettings.CheckCharacters = true;
-            xmlSettings.IndentChars = "  ";
+            var sw = new StringWriter();
+            var xmlSettings = new XmlWriterSettings
+                {
+                    Encoding = Encoding.UTF8,
+                    ConformanceLevel = ConformanceLevel.Fragment,
+                    Indent = true,
+                    NewLineOnAttributes = false,
+                    CheckCharacters = true,
+                    IndentChars = "  "
+                };
 
             XmlWriter xw = XmlWriter.Create(sw, xmlSettings);
 
@@ -67,20 +71,21 @@ namespace ClearCanvas.ImageServer.Common.Utilities
         /// </summary>
         /// <typeparam name="T">Type of the object to deserialize into</typeparam>
         /// <param name="node">The node to be deserialized</param>
+        /// <param name="extraTypes">Extra types to pass to the serializer</param>
         /// <returns></returns>
-        public static T Deserialize<T>(XmlNode node)
+        public static T Deserialize<T>(XmlNode node, Type[] extraTypes = null)
             where T:class
         {
             if (node == null)
                 return null;
 
-            MemoryStream stream = new MemoryStream();
+            var stream = new MemoryStream();
             XmlWriter sw = new XmlTextWriter(stream, Encoding.Unicode);
             node.WriteTo(sw);
             sw.Flush();
             stream.Position = 0;
             
-            return Deserialize<T>(new XmlTextReader(stream));
+            return Deserialize<T>(new XmlTextReader(stream), extraTypes);
         }
 
 
@@ -89,13 +94,16 @@ namespace ClearCanvas.ImageServer.Common.Utilities
         /// </summary>
         /// <typeparam name="T">Type of the object to deserialize into</typeparam>
         /// <param name="reader">The <see cref="XmlReader"/> to read the xml content</param>
+        /// <param name="extraTypes">Extra types to pass to the serializer</param>
         /// <returns></returns>
-        public static T Deserialize<T>(XmlReader reader)
+        public static T Deserialize<T>(XmlReader reader, Type[] extraTypes = null)
             where T : class
         {
             Platform.CheckForNullReference(reader, "reader");
 
-            XmlSerializer serializer = new XmlSerializer(typeof(T));
+            var serializer = extraTypes != null 
+                ? new XmlSerializer(typeof(T),extraTypes) 
+                : new XmlSerializer(typeof(T));
             return (T)serializer.Deserialize(reader);
         }
 
@@ -105,65 +113,87 @@ namespace ClearCanvas.ImageServer.Common.Utilities
         /// </summary>
         /// <typeparam name="T">Type of the object to deserialize into</typeparam>
         /// <param name="xmlContent">The xml string</param>
+        /// <param name="extraTypes">Extra types to pass to the serializer</param>
         /// <returns></returns>
-        public static T Deserialize<T>(string xmlContent) where T : class
+        public static T Deserialize<T>(string xmlContent, Type[] extraTypes = null) where T : class
         {
-            XmlDocument doc = new XmlDocument();
+            var doc = new XmlDocument();
             doc.LoadXml(xmlContent);
-            return Deserialize<T>(doc);
+            return Deserialize<T>(doc, extraTypes);
         }
 
         /// <summary>
         /// Serializes an object into an XML format.
         /// </summary>
         /// <param name="obj">Object to be serialized</param>
+        /// <param name="includeAssemblyVersion">Flag whether the assembly version is included in the serialized XML.</param>
+        /// <param name="extraTypes">Extra types to pass to the serializer</param>
         /// <returns>An XmlNode that contains the serialized object</returns>
         /// <remarks>
         /// To use the returned <see cref="XmlNode"/> in an <see cref="XmlDocument"/>, <see cref="XmlDocument.ImportNode"/> must be used.
         /// </remarks>
-        public static XmlNode Serialize(Object obj)
+        public static XmlNode Serialize(Object obj, bool includeAssemblyVersion = true, Type[] extraTypes = null)
         {
-            XmlDocument doc = SerializeAsXmlDoc(obj);
+            XmlDocument doc = SerializeAsXmlDoc(obj, extraTypes);
             XmlNode node = doc.DocumentElement;
             // add "type" attribute to the context node for deserialization purpose
+            if (includeAssemblyVersion)
+            {
             XmlAttribute attr = doc.CreateAttribute("type");
             attr.Value = obj.GetType().AssemblyQualifiedName;
+                if (node != null) 
             node.Attributes.Append(attr);
+            }
+            else
+            {
+                XmlAttribute attr = doc.CreateAttribute("type");
+                Type t = obj.GetType();
+
+                string[] list = t.Assembly.ToString().Split(new[] {','});
+                if (list.Length > 0)
+                {
+                    attr.Value = string.Format("{0}, {1}", t.FullName, list[0]);
+                    if (node != null)
+                        node.Attributes.Append(attr);
+                }
+            }
             return node;
         }
-        
-        public static XmlDocument SerializeAsXmlDoc(Object obj)
+
+        public static XmlDocument SerializeAsXmlDoc(Object obj, Type[] extraTypes = null)
         {
             if (obj == null)
                 return null;
 
-            StringWriter sw = new StringWriter();
-            CustomXmlTextWriter xmlTextWriter = new CustomXmlTextWriter(sw);
+            var sw = new StringWriter();
+            var xmlTextWriter = new CustomXmlTextWriter(sw);
 
-            XmlSerializer serializer = new XmlSerializer(obj.GetType());
+            var serializer = extraTypes != null ? new XmlSerializer(obj.GetType(),extraTypes) : new XmlSerializer(obj.GetType());
             serializer.Serialize(xmlTextWriter, obj);
             
-            XmlDocument doc = new XmlDocument();
+            var doc = new XmlDocument();
             doc.LoadXml(sw.ToString());
 
             return doc;
         }
 
-        public static string SerializeAsString(Object obj)
+        public static string SerializeAsString(Object obj, Type[] extraTypes = null)
         {
             Platform.CheckForNullReference(obj, "obj");
 
-            StringWriter sw = new StringWriter();
-            XmlWriterSettings settings = new XmlWriterSettings();
-			settings.Indent = true;
-			settings.NewLineOnAttributes = false;
-			settings.OmitXmlDeclaration = true;
-			settings.Encoding = Encoding.UTF8;
+            var sw = new StringWriter();
+            var settings = new XmlWriterSettings
+                {
+                    Indent = true,
+                    NewLineOnAttributes = false,
+                    OmitXmlDeclaration = true,
+                    Encoding = Encoding.UTF8
+                };
 
 
 			using(XmlWriter writer = XmlWriter.Create(sw, settings))
 			{
-                XmlNode node = Serialize(obj);
+                XmlNode node = Serialize(obj, true, extraTypes);
                 node.WriteTo(writer);
                 writer.Flush();
 			}
@@ -310,7 +340,7 @@ namespace ClearCanvas.ImageServer.Common.Utilities
                 throw new ArgumentNullException("Unable to Read Xml Data for Abstract Type '" + typeof(AbstractType).Name +
                     "' because no 'type' attribute was specified in the XML.");
 
-            Type type = Type.GetType(typeAttrib);
+            var type = HeuristicTypeResolver.GetType(typeAttrib);
 
             // Check the Type is Found.
             if (type == null)
@@ -330,15 +360,14 @@ namespace ClearCanvas.ImageServer.Common.Utilities
 
         public void WriteXml(XmlWriter writer)
         {
-            // Write the Type Name to the XML Element as an Attrib and Serialize
-            Type type = _data.GetType();
-
-            // BugFix: Assembly must be FQN since Types can/are external to current.
-            writer.WriteAttributeString("type", type.AssemblyQualifiedName);
+            var type = _data.GetType();
+            var typeName = type.FullName + ", " + type.GetAssemblyName(false);
+                
+            writer.WriteAttributeString("type", typeName);
             new XmlSerializer(type).Serialize(writer, _data);
         }
+        
 
         #endregion
     }
-
 }

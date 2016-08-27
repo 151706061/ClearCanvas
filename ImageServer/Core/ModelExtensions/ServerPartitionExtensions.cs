@@ -23,11 +23,9 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using ClearCanvas.ImageServer.Common.Authentication;
 using ClearCanvas.ImageServer.Model;
-using ClearCanvas.ImageServer.Common;
 using System.IO;
 using ClearCanvas.Web.Enterprise.Authentication;
 using ClearCanvas.Common;
@@ -39,7 +37,7 @@ namespace ClearCanvas.ImageServer.Core.ModelExtensions
 
         /// <summary>
         /// Return the absolute path to the currently active Incoming folder for this partition
-        /// or null if there's no incoming folder (eg, Import Service is not running)
+        /// or null if there's no incoming folder (e.g., Import Service is not running) or if it's undeterministic (e.g., misconfiguration)
         /// </summary>
         /// <returns></returns>
         public static string GetIncomingFolder(this ServerPartition partition)
@@ -47,6 +45,13 @@ namespace ClearCanvas.ImageServer.Core.ModelExtensions
             var importServices = ServiceLock.FindServicesOfType(ServiceLockTypeEnum.ImportFiles);
             if (importServices == null || importServices.Count == 0)
                 return null;
+
+            // Only expect to have one instance of the Import File service
+            if (importServices.Count>1)
+            {
+                Platform.Log(LogLevel.Warn, "Detect multiple instances of the Import Files Service!");
+                return null;
+            }
 
             var activeService = importServices.SingleOrDefault(s => s.Enabled);
             if (activeService == null)
@@ -68,10 +73,15 @@ namespace ClearCanvas.ImageServer.Core.ModelExtensions
         {
             Platform.CheckForNullReference(user, "user cannot be null");
 
-            // If user has the "access all" token, return true
+            if (partition.ServerPartitionTypeEnum.Equals(ServerPartitionTypeEnum.VFS))
+	        {
+		        return user.IsInRole(AuthorityTokens.Vfs.ViewPartitions);
+	        }
+
+	        // If user has the "access all" token, return true
             if (user.IsInRole(ClearCanvas.Enterprise.Common.AuthorityTokens.DataAccess.AllPartitions))
                 return true;
-
+            
             // If user belongs to any data access authority group which can access the partition, return true
             var isAllowed = user.Credentials.DataAccessAuthorityGroups != null
                 && user.Credentials.DataAccessAuthorityGroups.Any(g => partition.IsAuthorityGroupAllowed(g.ToString()));

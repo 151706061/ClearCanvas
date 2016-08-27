@@ -37,29 +37,44 @@ namespace ClearCanvas.Ris.Client
 	}
 
 	[MenuAction("launch", "global-menus/MenuFile/MenuHome", "Launch")]
-	[Tooltip("launch", "Go to home page")]
-	[IconSet("launch", IconScheme.Colour, "Icons.GlobalHomeToolSmall.png", "Icons.GlobalHomeToolMedium.png", "Icons.GlobalHomeToolLarge.png")]
+	[Tooltip("launch", "TooltipGoToHomepage")]
+	[IconSet("launch", "Icons.GlobalHomeToolSmall.png", "Icons.GlobalHomeToolMedium.png", "Icons.GlobalHomeToolLarge.png")]
 	[VisibleStateObserver("launch", "Visible", "VisibleChanged")]
 	[ActionPermission("launch", ClearCanvas.Ris.Application.Common.AuthorityTokens.Workflow.HomePage.View)]
 
-	[MenuAction("toggleDowntimeMode", "global-menus/MenuTools/MenuDowntimeRecoveryMode", "ToggleDowntimeMode", Flags = ClickActionFlags.CheckAction)]
+	[MenuAction("toggleDowntimeMode", "global-menus/MenuTools/MenuDowntime/MenuDowntimeRecoveryMode", "ToggleDowntimeMode", Flags = ClickActionFlags.CheckAction)]
 	[CheckedStateObserver("toggleDowntimeMode", "DowntimeModeChecked", "DowntimeModeCheckedChanged")]
 	[ActionPermission("toggleDowntimeMode", ClearCanvas.Ris.Application.Common.AuthorityTokens.Workflow.HomePage.View,
 		ClearCanvas.Ris.Application.Common.AuthorityTokens.Workflow.Downtime.RecoveryOperations)]
 	[ExtensionOf(typeof(DesktopToolExtensionPoint), FeatureToken = FeatureTokens.RIS.Core)]
 	public class GlobalHomeTool : WorklistPreviewHomeTool<FolderSystemExtensionPoint>
 	{
+		private static IWorkspace _workspace;
 		private static DesktopWindow _risWindow;
 
-		public override void Initialize()
+		protected override IWorkspace Workspace
 		{
-			base.Initialize();
+			get { return _workspace; }
+			set { _workspace = value; }
+		}
 
+		/// <summary>
+		/// Gets whether or not user is staff, has appropriate authorization, and user setting says to show home
+		/// </summary>
+		internal bool CanShowHome
+		{
+			get
+			{
+				return LoginSession.Current != null && LoginSession.Current.IsStaff
+						&& Thread.CurrentPrincipal.IsInRole(ClearCanvas.Ris.Application.Common.AuthorityTokens.Workflow.HomePage.View)
+						&& HomePageSettings.Default.ShowHomepageOnStartUp;
+			}
+		}
+
+		internal void PerformLaunch()
+		{
 			// automatically launch home page on startup, only if current user is a Staff
-			if (LoginSession.Current != null && LoginSession.Current.IsStaff 
-				&& Thread.CurrentPrincipal.IsInRole(ClearCanvas.Ris.Application.Common.AuthorityTokens.Workflow.HomePage.View)
-				&& HomePageSettings.Default.ShowHomepageOnStartUp
-				&& _risWindow == null)
+			if (CanShowHome && _risWindow == null)
 			{
 				Launch();
 

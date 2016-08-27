@@ -1,4 +1,4 @@
-<%--  License
+<%-- License
 
 // Copyright (c) 2013, ClearCanvas Inc.
 // All rights reserved.
@@ -22,21 +22,9 @@
 
 --%>
 
-<%-- License
-
-Copyright (c) 2011, ClearCanvas Inc.
-All rights reserved.
-http://www.clearcanvas.ca
-
-This software is licensed under the Open Software License v3.0.
-For the complete license, see http://www.clearcanvas.ca/OSLv3.0
---%>
-
 <%@ Control Language="C#" AutoEventWireup="true" CodeBehind="StudyDetailsView.ascx.cs" Inherits="ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Controls.StudyDetailsView" %>
 
 <div class="GridViewBorder">
-	<asp:TableRow VerticalAlign="top">
-		<asp:TableCell VerticalAlign="top">
 <asp:DetailsView ID="StudyDetailView" runat="server" AutoGenerateRows="False" GridLines="Horizontal" CellPadding="4" 
      CssClass="GlobalGridView" Width="100%">
     <Fields>
@@ -101,6 +89,4 @@ For the complete license, see http://www.clearcanvas.ca/OSLv3.0
     <AlternatingRowStyle CssClass="GlobalGridViewAlternatingRow" />
     
 </asp:DetailsView>
-                    		</asp:TableCell>
-	</asp:TableRow>
 </div>

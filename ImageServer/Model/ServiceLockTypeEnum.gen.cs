@@ -46,6 +46,10 @@ public partial class ServiceLockTypeEnum : ServerEnum
       private static readonly ServiceLockTypeEnum _PurgeAlerts = GetEnum("PurgeAlerts");
       private static readonly ServiceLockTypeEnum _ImportFiles = GetEnum("ImportFiles");
       private static readonly ServiceLockTypeEnum _SyncDataAccess = GetEnum("SyncDataAccess");
+      private static readonly ServiceLockTypeEnum _ExternalRequestProcess = GetEnum("ExternalRequestProcess");
+      private static readonly ServiceLockTypeEnum _ExternalNotificationProcess = GetEnum("ExternalNotificationProcess");
+      private static readonly ServiceLockTypeEnum _PartitionOrderPurge = GetEnum("PartitionOrderPurge");
+      private static readonly ServiceLockTypeEnum _PartitionReapplyRules = GetEnum("PartitionReapplyRules");
       #endregion
 
       #region Public Static Properties
@@ -113,11 +117,39 @@ public partial class ServiceLockTypeEnum : ServerEnum
           get { return _ImportFiles; }
       }
       /// <summary>
-      /// This service periodically synchronizes the deletion status of Authority Groups on the Administrative Services with Data Access granted to studies on the ImageServer.
+      /// This service periodically synchronizes the deletion status of Authority Groups on the Enterprise Services with Data Access granted to studies on the ImageServer.
       /// </summary>
       public static ServiceLockTypeEnum SyncDataAccess
       {
           get { return _SyncDataAccess; }
+      }
+      /// <summary>
+      /// This service processes requests made to the ImageServer from external applications.
+      /// </summary>
+      public static ServiceLockTypeEnum ExternalRequestProcess
+      {
+          get { return _ExternalRequestProcess; }
+      }
+      /// <summary>
+      /// This service processes notifications to send to external applications.
+      /// </summary>
+      public static ServiceLockTypeEnum ExternalNotificationProcess
+      {
+          get { return _ExternalNotificationProcess; }
+      }
+      /// <summary>
+      /// This service purges orders not linked to studies on a partition.
+      /// </summary>
+      public static ServiceLockTypeEnum PartitionOrderPurge
+      {
+          get { return _PartitionOrderPurge; }
+      }
+      /// <summary>
+      /// This service scans the contents of a partition and reapplies Study Processing rules to all studies on the partition that have not been archived.  Studies that have been archived will have Study Archived and Data Access rules applied.
+      /// </summary>
+      public static ServiceLockTypeEnum PartitionReapplyRules
+      {
+          get { return _PartitionReapplyRules; }
       }
 
       #endregion

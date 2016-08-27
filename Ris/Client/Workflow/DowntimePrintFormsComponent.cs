@@ -35,8 +35,8 @@ using ClearCanvas.Ris.Application.Common.RegistrationWorkflow.OrderEntry;
 
 namespace ClearCanvas.Ris.Client.Workflow
 {
-	[MenuAction("launch", "global-menus/MenuTools/Print Downtime Forms", "Launch")]
-	[IconSet("launch", IconScheme.Colour, "Icons.PrintSmall.png", "Icons.PrintMedium.png", "Icons.PrintLarge.png")]
+	[MenuAction("launch", "global-menus/MenuTools/MenuDowntime/MenuPrintDowntimeForms", "Launch")]
+	[IconSet("launch", "Icons.PrintSmall.png", "Icons.PrintMedium.png", "Icons.PrintLarge.png")]
 	[ActionPermission("launch", ClearCanvas.Ris.Application.Common.AuthorityTokens.Workflow.Downtime.PrintForms)]
 	[ExtensionOf(typeof(DesktopToolExtensionPoint), FeatureToken = FeatureTokens.RIS.Core)]
 	public class DowntimePrintFormsTool : Tool<IDesktopToolContext>
@@ -120,8 +120,7 @@ namespace ClearCanvas.Ris.Client.Workflow
 				{
 					try
 					{
-						// todo: loc
-						taskContext.ReportProgress(new BackgroundTaskProgress(0, "Generating PDF..."));
+						taskContext.ReportProgress(new BackgroundTaskProgress(0, SR.MessageGeneratingPdf));
 						Platform.GetService<IOrderEntryService>(
 							service =>
 							{
@@ -137,7 +136,7 @@ namespace ClearCanvas.Ris.Client.Workflow
 					{
 						taskContext.Error(e);
 					}
-				}, false);
+				}, false) { ThreadUICulture = Desktop.Application.CurrentUICulture };
 
 			ProgressDialog.Show(task, this.Host.DesktopWindow, true, ProgressBarStyle.Marquee);
 

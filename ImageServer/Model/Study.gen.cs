@@ -31,6 +31,7 @@ namespace ClearCanvas.ImageServer.Model
     using ClearCanvas.Dicom;
     using ClearCanvas.Enterprise.Core;
     using ClearCanvas.ImageServer.Enterprise;
+    using ClearCanvas.ImageServer.Enterprise.Command;
     using ClearCanvas.ImageServer.Model.EntityBrokers;
 
     [Serializable]
@@ -45,6 +46,10 @@ namespace ClearCanvas.ImageServer.Model
             ,ServerEntityKey _patientKey_
             ,Int32 _numberOfStudyRelatedSeries_
             ,Int32 _numberOfStudyRelatedInstances_
+            ,QCStatusEnum _qCStatusEnum_
+            ,String _qCOutput_
+            ,DateTime? _qCUpdateTimeUtc_
+            ,ServerEntityKey _orderKey_
             ,Decimal _studySizeInKB_
             ,String _responsiblePerson_
             ,String _responsibleOrganization_
@@ -70,6 +75,10 @@ namespace ClearCanvas.ImageServer.Model
             PatientKey = _patientKey_;
             NumberOfStudyRelatedSeries = _numberOfStudyRelatedSeries_;
             NumberOfStudyRelatedInstances = _numberOfStudyRelatedInstances_;
+            QCStatusEnum = _qCStatusEnum_;
+            QCOutput = _qCOutput_;
+            QCUpdateTimeUtc = _qCUpdateTimeUtc_;
+            OrderKey = _orderKey_;
             StudySizeInKB = _studySizeInKB_;
             ResponsiblePerson = _responsiblePerson_;
             ResponsibleOrganization = _responsibleOrganization_;
@@ -109,6 +118,18 @@ namespace ClearCanvas.ImageServer.Model
         [DicomField(DicomTags.NumberOfStudyRelatedInstances, DefaultValue = DicomFieldDefault.Null)]
         [EntityFieldDatabaseMappingAttribute(TableName="Study", ColumnName="NumberOfStudyRelatedInstances")]
         public Int32 NumberOfStudyRelatedInstances
+        { get; set; }
+        [EntityFieldDatabaseMappingAttribute(TableName="Study", ColumnName="QCStatusEnum")]
+        public QCStatusEnum QCStatusEnum
+        { get; set; }
+        [EntityFieldDatabaseMappingAttribute(TableName="Study", ColumnName="QCOutput")]
+        public String QCOutput
+        { get; set; }
+        [EntityFieldDatabaseMappingAttribute(TableName="Study", ColumnName="QCUpdateTimeUtc")]
+        public DateTime? QCUpdateTimeUtc
+        { get; set; }
+        [EntityFieldDatabaseMappingAttribute(TableName="Study", ColumnName="OrderGUID")]
+        public ServerEntityKey OrderKey
         { get; set; }
         [EntityFieldDatabaseMappingAttribute(TableName="Study", ColumnName="StudySizeInKB")]
         public Decimal StudySizeInKB
@@ -186,9 +207,9 @@ namespace ClearCanvas.ImageServer.Model
         #region Static Methods
         static public Study Load(ServerEntityKey key)
         {
-            using (var read = PersistentStoreRegistry.GetDefaultStore().OpenReadContext())
+            using (var context = new ServerExecutionContext())
             {
-                return Load(read, key);
+                return Load(context.ReadContext, key);
             }
         }
         static public Study Load(IPersistenceContext read, ServerEntityKey key)
@@ -215,6 +236,10 @@ namespace ClearCanvas.ImageServer.Model
             updateColumns.PatientKey = entity.PatientKey;
             updateColumns.NumberOfStudyRelatedSeries = entity.NumberOfStudyRelatedSeries;
             updateColumns.NumberOfStudyRelatedInstances = entity.NumberOfStudyRelatedInstances;
+            updateColumns.QCStatusEnum = entity.QCStatusEnum;
+            updateColumns.QCOutput = entity.QCOutput;
+            updateColumns.QCUpdateTimeUtc = entity.QCUpdateTimeUtc;
+            updateColumns.OrderKey = entity.OrderKey;
             updateColumns.StudySizeInKB = entity.StudySizeInKB;
             updateColumns.ResponsiblePerson = entity.ResponsiblePerson;
             updateColumns.ResponsibleOrganization = entity.ResponsibleOrganization;

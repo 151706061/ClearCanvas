@@ -31,6 +31,7 @@ using ClearCanvas.Common;
 using ClearCanvas.Common.Utilities;
 using ClearCanvas.Enterprise.Core;
 using ClearCanvas.ImageServer.Common;
+using ClearCanvas.ImageServer.Core;
 using ClearCanvas.ImageServer.Model;
 using ClearCanvas.ImageServer.Model.EntityBrokers;
 using ClearCanvas.ImageServer.Core.ModelExtensions;
@@ -48,6 +49,9 @@ namespace ClearCanvas.ImageServer.Services.ServiceLock.FilesystemFileImporter
         private int _importedSopCounter;
         private bool _restoreTriggered;
 
+        private static readonly object _dbCheckSync = new object();
+        private static long _lastDbCheck;
+        private static bool? _multipleInstanceDetected= false;
         #endregion
 
         #region IServiceLockItemProcessor Members
@@ -56,43 +60,64 @@ namespace ClearCanvas.ImageServer.Services.ServiceLock.FilesystemFileImporter
         {
             DirectoryImportSettings settings = DirectoryImportSettings.Default;
 
+            // #10419: Avoid running multiple instances of Import service - which can lead to race condition on the input files
+            if (CheckMultipleInstances())
+            {
+                // Instead of disabling duplicate entries automatically, decided it's easier and safer to let user figure out which one should be disabled.
+                Platform.Log(LogLevel.Warn, "Detect multiple active instances of the Import File Service. Go to Service Scheduling configuration and make sure only one of them is active.");
+                DateTime newScheduledTime = Platform.Time.AddSeconds(Math.Max(settings.RecheckDelaySeconds, 60));
+                UnlockServiceLock(item, true, newScheduledTime);
+                return;
+            }
+
+            
             ServerFilesystemInfo filesystem = EnsureFilesystemIsValid(item);
             if (filesystem != null)
             {
                 Platform.Log(LogLevel.Debug, "Start importing dicom files from {0}", filesystem.Filesystem.FilesystemPath);
 
-                foreach (ServerPartition partition in ServerPartitionMonitor.Instance)
+                foreach (ServerPartition partition in ServerPartitionMonitor.Instance.Partitions)
                 {
-                    DirectoryImporterParameters parms = new DirectoryImporterParameters();
-                    String incomingFolder = partition.GetIncomingFolder(); // String.Format("{0}_{1}", partition.PartitionFolder, FilesystemMonitor.ImportDirectorySuffix);
-
-                    parms.Directory = new DirectoryInfo(filesystem.Filesystem.GetAbsolutePath(incomingFolder));
-                    parms.PartitionAE = partition.AeTitle;
-                    parms.MaxImages = settings.MaxBatchSize;
-                    parms.Delay = settings.ImageDelay;
-                    parms.Filter = "*.*";
-
-                    if (!parms.Directory.Exists)
+                    if (partition.Enabled)
                     {
-                        parms.Directory.Create();
+                        String incomingFolder = partition.GetIncomingFolder();
+                        if (!string.IsNullOrEmpty(incomingFolder))
+                        {
+                            DirectoryImporterParameters parms = new DirectoryImporterParameters
+                                                                    {
+                                                                        Directory = new DirectoryInfo(incomingFolder),
+                                                                        PartitionAE = partition.AeTitle,
+                                                                        MaxImages = settings.MaxBatchSize,
+                                                                        Delay = settings.ImageDelay,
+                                                                        Filter = "*.*"
+                                                                    };
+
+                            if (!parms.Directory.Exists)
+                            {
+                                parms.Directory.Create();
+                            }
+
+                            DirectoryImporterBackgroundProcess process = new DirectoryImporterBackgroundProcess(parms);
+                            process.SopImported += delegate { _importedSopCounter++; };
+                            process.RestoreTriggered += delegate { _restoreTriggered = true; };
+                            _queue.Enqueue(process);   
+                        }
                     }
-
-                    DirectoryImporterBackgroundProcess process = new DirectoryImporterBackgroundProcess(parms);
-                    process.SopImported += delegate { _importedSopCounter++; };
-                    process.RestoreTriggered += delegate { _restoreTriggered = true; };
-                    _queue.Enqueue(process);
                 }
 
-                // start the processes.
-                for (int n = 0; n < settings.MaxConcurrency && n < _queue.Count; n++)
-                {
-                    LaunchNextBackgroundProcess();
-                }
+	            if (_queue.Count > 0)
+	            {
+		            // start the processes.
+		            for (int n = 0; n < settings.MaxConcurrency && n < _queue.Count; n++)
+		            {
+			            LaunchNextBackgroundProcess();
+		            }
 
-                _allCompleted.WaitOne();
+		            _allCompleted.WaitOne();
 
-                if (CancelPending)
-                    Platform.Log(LogLevel.Info, "All import processes have completed gracefully.");
+		            if (CancelPending)
+			            Platform.Log(LogLevel.Info, "All import processes have completed gracefully.");
+	            }
             }
 
             if (_restoreTriggered)
@@ -103,13 +128,49 @@ namespace ClearCanvas.ImageServer.Services.ServiceLock.FilesystemFileImporter
             }
             else
             {
-                UnlockServiceLock(item, true, Platform.Time.AddSeconds(_importedSopCounter>0? 5: settings.RecheckDelaySeconds));
+                UnlockServiceLock(item, true, Platform.Time.AddSeconds(_importedSopCounter > 0 ? 5 : settings.RecheckDelaySeconds));
             }
+            
         }
+
+        
 
         #endregion
 
         #region Private Methods
+
+
+        private bool CheckMultipleInstances()
+        {
+            TimeSpan cacheDuration = TimeSpan.FromMinutes(2);
+            lock (_dbCheckSync)
+            {
+                if (!_multipleInstanceDetected.HasValue || Math.Abs(Environment.TickCount - _lastDbCheck) > cacheDuration.TotalMilliseconds)
+                {
+
+                    _lastDbCheck = Environment.TickCount;
+
+                    using (IReadContext context = PersistentStoreRegistry.GetDefaultStore().OpenReadContext())
+                    {
+                        var broker = context.GetBroker<IServiceLockEntityBroker>();
+
+                        var criteria = new ServiceLockSelectCriteria();
+                        criteria.ServiceLockTypeEnum.EqualTo(ServiceLockTypeEnum.ImportFiles);
+                        criteria.Enabled.EqualTo(true);
+
+                        var list = broker.Find(criteria);
+
+                        _multipleInstanceDetected = list.Count > 1;
+                    }
+                }
+                
+            }
+
+            return _multipleInstanceDetected.Value;
+
+        }
+
+
         private static ServerFilesystemInfo EnsureFilesystemIsValid(Model.ServiceLock item)
         {
             ServerFilesystemInfo filesystem = null;

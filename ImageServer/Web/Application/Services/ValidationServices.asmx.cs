@@ -112,7 +112,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Services
             {
                 result.Success = false;
                 result.ErrorCode = -1;
-                result.ErrorText = ValidationErrors.UsernameCannotBeEmpty;
+                result.ErrorText = ValidationErrors.UserIDCannotBeEmpty;
                 return result;
             }
 
@@ -228,7 +228,11 @@ namespace ClearCanvas.ImageServer.Web.Application.Services
             }
 
             string error;
-            if (false == Rule<ServerActionContext, ServerRuleTypeEnum>.ValidateRule(type, theDoc, out error))
+            if (false == Rule<ServerActionContext>.ValidateRule(
+				theDoc,
+				ServerRulesEngine.GetSpecificationCompiler(),
+				ServerRulesEngine.GetActionCompiler(type),
+				out error))
             {
                 result.ErrorText = error;
                 result.Success = false;

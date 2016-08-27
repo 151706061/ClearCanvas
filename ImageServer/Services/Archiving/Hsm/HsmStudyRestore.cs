@@ -31,10 +31,12 @@ using ClearCanvas.Dicom;
 using ClearCanvas.Dicom.Utilities.Command;
 using ClearCanvas.Enterprise.Core;
 using ClearCanvas.ImageServer.Common;
-using ClearCanvas.ImageServer.Common.Command;
+using ClearCanvas.ImageServer.Core;
 using ClearCanvas.ImageServer.Core.Command;
+using ClearCanvas.ImageServer.Core.Command.Archiving;
 using ClearCanvas.ImageServer.Core.Process;
 using ClearCanvas.ImageServer.Core.Validation;
+using ClearCanvas.ImageServer.Enterprise.Command;
 using ClearCanvas.ImageServer.Model;
 using ClearCanvas.ImageServer.Model.Brokers;
 using ClearCanvas.ImageServer.Model.Parameters;
@@ -248,7 +250,7 @@ namespace ClearCanvas.ImageServer.Services.Archiving.Hsm
                     // Apply the rules engine.
 					var context =
 						new ServerActionContext(null, fs.Filesystem.GetKey(), _hsmArchive.ServerPartition,
-						                        queueItem.StudyStorageKey) {CommandProcessor = processor};
+						                        queueItem.StudyStorageKey, processor);
 					processor.AddCommand(
 						new ApplyRulesCommand(destinationFolder, _studyStorage.StudyInstanceUid, context));
 
@@ -352,11 +354,10 @@ namespace ClearCanvas.ImageServer.Services.Archiving.Hsm
 			{
 				using (var processor = new ServerCommandProcessor("HSM Restore Online Study"))
 				{
-					using (var zipService = Platform.GetService<IZipService>())
+				    var zipService = Platform.GetService<IZipService>();
+					using (var zipWriter = zipService.OpenWrite(zipFile))
 					{
-					    zipService.OpenWrite(zipFile);
-
-                        foreach (string file in zipService.EntryFileNames)
+                        foreach (string file in zipWriter.EntryFileNames)
 						{
 							processor.AddCommand(new ExtractZipFileAndReplaceCommand(zipFile, file, destinationFolder));
 						}
@@ -379,7 +380,7 @@ namespace ClearCanvas.ImageServer.Services.Archiving.Hsm
 					// Apply the rules engine.
 					var context =
 						new ServerActionContext(null, _location.FilesystemKey, _hsmArchive.ServerPartition,
-												queueItem.StudyStorageKey) {CommandProcessor = processor};
+												queueItem.StudyStorageKey, processor);
 					processor.AddCommand(
 						new ApplyRulesCommand(destinationFolder, _location.StudyInstanceUid, context));
 

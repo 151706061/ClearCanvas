@@ -35,10 +35,10 @@ using ClearCanvas.Ris.Application.Common.RegistrationWorkflow.OrderEntry;
 
 namespace ClearCanvas.Ris.Client.Workflow
 {
-	[ButtonAction("apply", "folderexplorer-items-toolbar/Merge Orders", "Apply")]
-	[MenuAction("apply", "folderexplorer-items-contextmenu/Merge Orders", "Apply")]
-	[Tooltip("apply", "Merge Orders")]
-	[IconSet("apply", IconScheme.Colour, "MergeOrdersSmall.png", "MergeOrdersMedium.png", "MergeOrdersLarge.png")]
+	[ButtonAction("apply", "folderexplorer-items-toolbar/MenuMergeOrders", "Apply")]
+	[MenuAction("apply", "folderexplorer-items-contextmenu/MenuMergeOrders", "Apply")]
+	[Tooltip("apply", "TooltipMergeOrders")]
+	[IconSet("apply", "MergeOrdersSmall.png", "MergeOrdersMedium.png", "MergeOrdersLarge.png")]
 	[EnabledStateObserver("apply", "Enabled", "EnabledChanged")]
 	[ActionPermission("apply", Application.Common.AuthorityTokens.Workflow.Order.Merge)]
 	public abstract class MergeOrdersToolBase<TItem, TContext> : WorkflowItemTool<TItem, TContext>

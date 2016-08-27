@@ -1,11 +1,24 @@
 <%--  License
 
-// Copyright (c) 2011, ClearCanvas Inc.
+// Copyright (c) 2013, ClearCanvas Inc.
 // All rights reserved.
 // http://www.clearcanvas.ca
 //
-// This software is licensed under the Open Software License v3.0.
-// For the complete license, see http://www.clearcanvas.ca/OSLv3.0
+// This file is part of the ClearCanvas RIS/PACS open source project.
+//
+// The ClearCanvas RIS/PACS open source project is free software: you can
+// redistribute it and/or modify it under the terms of the GNU General Public
+// License as published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// The ClearCanvas RIS/PACS open source project is distributed in the hope that it
+// will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
+// Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along with
+// the ClearCanvas RIS/PACS open source project.  If not, see
+// <http://www.gnu.org/licenses/>.
 
 --%>
 
@@ -20,7 +33,16 @@
 <%@ Register Src="Controls/DeleteSeriesConfirmDialog.ascx" TagName="DeleteSeriesConfirmDialog" TagPrefix="localAsp" %>
 
 <asp:Content runat="server" ID="MainMenuContent" contentplaceholderID="MainMenuPlaceHolder">
-    <asp:Table ID="Table1" runat="server" Width="100%" ><asp:TableRow><asp:TableCell HorizontalAlign="right" style="padding-top: 12px;"><asp:LinkButton ID="LinkButton1" runat="server" SkinId="CloseButton" Text="<%$Resources: Labels, Close %>" OnClientClick="javascript: window.close(); return false;" /></asp:TableCell></asp:TableRow></asp:Table>
+    <asp:Table ID="Table1" runat="server" Width="100%" >
+	    <asp:TableRow>
+		    <asp:TableCell HorizontalAlign="right" style="padding-top: 12px;">
+		        <asp:LinkButton ID="LinkButton2" runat="server" SkinId="RefreshButton" Text="<%$Resources: Labels, Refresh %>" OnClientClick="javascript: location.reload(); return false;" />
+	        </asp:TableCell>
+		    <asp:TableCell HorizontalAlign="right" style="padding-top: 12px; width: 75px;">
+		        <asp:LinkButton ID="LinkButton1" runat="server" SkinId="CloseButton" Text="<%$Resources: Labels, Close %>" OnClientClick="javascript: window.close(); return false;" />
+	        </asp:TableCell>
+		</asp:TableRow>
+    </asp:Table>
 </asp:Content>
 
 <asp:Content ContentPlaceHolderID="MainContentSectionPlaceHolder" runat="server">

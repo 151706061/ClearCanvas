@@ -25,6 +25,7 @@
 #if UNIT_TESTS
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using ClearCanvas.Dicom.Network;
@@ -43,8 +44,8 @@ namespace ClearCanvas.Dicom.Tests
 
     public class ClientHandler : IDicomClientHandler
     {
-        private AbstractTest _test;
-        private TestTypes _type;
+        private readonly AbstractTest _test;
+        private readonly TestTypes _type;
         public ManualResetEvent _threadStop = new ManualResetEvent(false);
 
         public bool OnClientConnectedCalled = false;
@@ -133,14 +134,18 @@ namespace ClearCanvas.Dicom.Tests
 
     public class ServerHandler : IDicomServerHandler
     {
-        AbstractTest _test;
-        TestTypes _type;
+        readonly AbstractTest _test;
+        readonly TestTypes _type;
 
         public ServerHandler(AbstractTest test, TestTypes type)
         {
             _test = test;
             _type = type;
+            MessagesReceived = new List<DicomMessage>();
         }
+
+        public List<DicomMessage> MessagesReceived { get; set; }
+
         #region IDicomServerHandler Members
 
         public void OnClientConnected(DicomServer server, ServerAssociationParameters association)
@@ -170,7 +175,7 @@ namespace ClearCanvas.Dicom.Tests
         {
         	if (_type == TestTypes.SendMR)
         	{
-        		DicomAttributeCollection testSet = new DicomAttributeCollection();
+        		var testSet = new DicomAttributeCollection();
 
         		_test.SetupMR(testSet);
 
@@ -201,13 +206,14 @@ namespace ClearCanvas.Dicom.Tests
 					return;
 				}
 
+        	    MessagesReceived.Add(message);
+
 				server.SendCStoreResponse(presentationID, message.MessageId, sopInstanceUid.UID, DicomStatuses.Success);
 			}
         	else
         	{
 				Platform.Log(LogLevel.Error,"Unexpected test type mode");
 				server.SendAssociateAbort(DicomAbortSource.ServiceUser, DicomAbortReason.InvalidPDUParameter);
-				return;        		
         	}
     }
 
@@ -222,11 +228,21 @@ namespace ClearCanvas.Dicom.Tests
 
         }
 
-        public void OnReceiveAbort(DicomServer server, ServerAssociationParameters association, DicomAbortSource source, DicomAbortReason reason)
+	    public void OnReceiveDimseCommand(DicomServer server, ServerAssociationParameters association, byte presentationId,
+	                                      DicomAttributeCollection command)
+	    {
+	    }
+
+	    public IDicomFilestreamHandler OnStartFilestream(DicomServer server, ServerAssociationParameters association,
+	                                                     byte presentationId, DicomMessage message)
+	    {
+		    throw new NotImplementedException();
+	    }
+
+	    public void OnReceiveAbort(DicomServer server, ServerAssociationParameters association, DicomAbortSource source, DicomAbortReason reason)
         {
             throw new Exception("The method or operation is not implemented.");
         }
-
         #endregion
     }
 
@@ -243,10 +259,10 @@ namespace ClearCanvas.Dicom.Tests
         [Test]
         public void RejectTests()
         {
-            int port = 2112;
+            const int port = 2112;
 
             /* Setup the Server */
-            ServerAssociationParameters serverParameters = new ServerAssociationParameters("AssocTestServer", new IPEndPoint(IPAddress.Any, port));
+            var serverParameters = new ServerAssociationParameters("AssocTestServer", new IPEndPoint(IPAddress.Any, port));
             byte pcid = serverParameters.AddPresentationContext(SopClass.MrImageStorage);
             serverParameters.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrLittleEndian);
             serverParameters.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrBigEndian);
@@ -256,14 +272,14 @@ namespace ClearCanvas.Dicom.Tests
             DicomServer.StartListening(serverParameters, ServerHandlerCreator);
 
             /* Setup the client */
-            ClientAssociationParameters clientParameters = new ClientAssociationParameters("AssocTestClient", "AssocTestServer",
-                                                                                           new System.Net.IPEndPoint(IPAddress.Loopback, port));
+            var clientParameters = new ClientAssociationParameters("AssocTestClient", "AssocTestServer",
+                                                                                           new IPEndPoint(IPAddress.Loopback, port));
             pcid = clientParameters.AddPresentationContext(SopClass.CtImageStorage);
             clientParameters.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrLittleEndian);
             clientParameters.AddTransferSyntax(pcid, TransferSyntax.ImplicitVrLittleEndian);
 
             /* Open the association */
-            ClientHandler handler = new ClientHandler(this, TestTypes.AssociationReject);
+            var handler = new ClientHandler(this, TestTypes.AssociationReject);
             DicomClient client = DicomClient.Connect(clientParameters, handler);
 
 
@@ -274,13 +290,13 @@ namespace ClearCanvas.Dicom.Tests
 
             /* Setup the client */
             clientParameters = new ClientAssociationParameters("AssocTestClient", "AssocTestServer",
-                                                               new System.Net.IPEndPoint(IPAddress.Loopback, port));
+                                                               new IPEndPoint(IPAddress.Loopback, port));
             pcid = clientParameters.AddPresentationContext(SopClass.MrImageStorage);
             clientParameters.AddTransferSyntax(pcid, TransferSyntax.Jpeg2000ImageCompressionLosslessOnly);
 
 
             /* Open the association */
-            ClientHandler clientHandler = new ClientHandler(this, TestTypes.AssociationReject);
+            var clientHandler = new ClientHandler(this, TestTypes.AssociationReject);
             client = DicomClient.Connect(clientParameters, clientHandler);
 
             handler._threadStop.WaitOne();
@@ -296,10 +312,10 @@ namespace ClearCanvas.Dicom.Tests
         [Test]
         public void ServerTest()
         {
-            int port = 2112;
+            const int port = 2112;
 
             /* Setup the Server */
-            ServerAssociationParameters serverParameters = new ServerAssociationParameters("AssocTestServer",new IPEndPoint(IPAddress.Any,port));
+            var serverParameters = new ServerAssociationParameters("AssocTestServer",new IPEndPoint(IPAddress.Any,port));
             byte pcid = serverParameters.AddPresentationContext(SopClass.MrImageStorage);
             serverParameters.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrLittleEndian);
             serverParameters.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrBigEndian);
@@ -309,8 +325,8 @@ namespace ClearCanvas.Dicom.Tests
             DicomServer.StartListening(serverParameters, ServerHandlerCreator);
 
             /* Setup the client */
-            ClientAssociationParameters clientParameters = new ClientAssociationParameters("AssocTestClient","AssocTestServer",
-                                                                                           new System.Net.IPEndPoint(IPAddress.Loopback,port));
+            var clientParameters = new ClientAssociationParameters("AssocTestClient","AssocTestServer",
+                                                                                           new IPEndPoint(IPAddress.Loopback,port));
             pcid = clientParameters.AddPresentationContext(SopClass.MrImageStorage);
             clientParameters.AddTransferSyntax(pcid, TransferSyntax.ExplicitVrLittleEndian);
             clientParameters.AddTransferSyntax(pcid, TransferSyntax.ImplicitVrLittleEndian);
@@ -320,9 +336,8 @@ namespace ClearCanvas.Dicom.Tests
             clientParameters.AddTransferSyntax(pcid, TransferSyntax.ImplicitVrLittleEndian);
 
             /* Open the association */
-            ClientHandler handler = new ClientHandler(this,TestTypes.SendMR);
+            var handler = new ClientHandler(this,TestTypes.SendMR);
             DicomClient client = DicomClient.Connect(clientParameters, handler);
-
 
             handler._threadStop.WaitOne();
 
@@ -330,7 +345,6 @@ namespace ClearCanvas.Dicom.Tests
 
             DicomServer.StopListening(serverParameters);
         }
-
     }
 }
 

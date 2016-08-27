@@ -23,7 +23,7 @@
 #endregion
 
 using System;
-
+using System.Globalization;
 using ClearCanvas.Common;
 using ClearCanvas.Enterprise.Common.Time;
 
@@ -71,21 +71,26 @@ namespace ClearCanvas.Enterprise.Common
 
 		#region ITimeProvider Members
 
-		public DateTime CurrentTime
+		public DateTime GetCurrentTime(DateTimeKind kind)
 		{
-			get
+			if (ResyncRequired())
 			{
-				if (ResyncRequired())
-				{
-					ResyncLocalToEnterpriseTime();
-				}
-				return EnterpriseTimeFromLocal(DateTime.Now);
+				ResyncLocalToEnterpriseTime();
+			}
+			switch (kind)
+			{
+				case DateTimeKind.Utc:
+					return EnterpriseTime(DateTime.UtcNow);
+				case DateTimeKind.Local:
+					return EnterpriseTime(DateTime.Now);
+				default:
+					throw new ArgumentOutOfRangeException("kind");
 			}
 		}
 
 		#endregion
 
-		private DateTime EnterpriseTimeFromLocal(DateTime localTime)
+		private DateTime EnterpriseTime(DateTime localTime)
 		{
 			return localTime - _localToEnterpriseOffset;
 		}
@@ -109,7 +114,7 @@ namespace ClearCanvas.Enterprise.Common
 					_localToEnterpriseOffset = DateTime.Now - serverTime;
 
 					// update offline cache
-					client.Put(TimeOffsetCacheKey, _localToEnterpriseOffset.TotalMilliseconds.ToString());
+					client.Put(TimeOffsetCacheKey, _localToEnterpriseOffset.TotalMilliseconds.ToString(CultureInfo.InvariantCulture));
 				}
 				catch (Exception)
 				{
@@ -120,8 +125,10 @@ namespace ClearCanvas.Enterprise.Common
 					// attempt to read last known value from the offline cache
 					if (_localToEnterpriseOffset == TimeSpan.Zero)
 					{
+						double value;
 						var s = client.Get(TimeOffsetCacheKey);
-						_localToEnterpriseOffset = (s == null) ? TimeSpan.Zero : TimeSpan.FromMilliseconds(double.Parse(s));
+						_localToEnterpriseOffset = !string.IsNullOrEmpty(s) && double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out value)
+						                           	? TimeSpan.FromMilliseconds(value) : TimeSpan.Zero;
 					}
 				}
 			}

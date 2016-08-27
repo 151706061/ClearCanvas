@@ -24,15 +24,14 @@
 
 using System;
 using System.IO;
-using System.Xml;
 using ClearCanvas.Common;
 using ClearCanvas.Common.Utilities;
 using ClearCanvas.Dicom.Utilities.Command;
 using ClearCanvas.Dicom.Utilities.Xml;
 using ClearCanvas.ImageServer.Common;
-using ClearCanvas.ImageServer.Common.Command;
 using ClearCanvas.ImageServer.Common.Exceptions;
 using ClearCanvas.ImageServer.Core.Reconcile.CreateStudy;
+using ClearCanvas.ImageServer.Enterprise.Command;
 using ClearCanvas.ImageServer.Model;
 
 namespace ClearCanvas.ImageServer.Core.Reconcile
@@ -116,11 +115,11 @@ namespace ClearCanvas.ImageServer.Core.Reconcile
 			{
 				using (Stream fileStream = FileStreamOpener.OpenForRead(streamFile, FileMode.Open))
 				{
-					XmlDocument theDoc = new XmlDocument();
+					var theMemento = new StudyXmlMemento();
 
-					StudyXmlIo.Read(theDoc, fileStream);
+					StudyXmlIo.Read(theMemento, fileStream);
 
-					theXml.SetMemento(theDoc);
+					theXml.SetMemento(theMemento);
 
 					fileStream.Close();
 				}
@@ -151,7 +150,7 @@ namespace ClearCanvas.ImageServer.Core.Reconcile
 	    {
 	        string reason;
 	        if (!location.CanUpdate(out reason))
-	            throw new StudyIsInInvalidStateException(location, reason);
+	            throw new StudyIsInInvalidStateException(location.StudyStatusEnum.Description, location.StudyInstanceUid, reason);
 	    }
 	}
 }

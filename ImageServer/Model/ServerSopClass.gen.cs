@@ -31,6 +31,7 @@ namespace ClearCanvas.ImageServer.Model
     using ClearCanvas.Dicom;
     using ClearCanvas.Enterprise.Core;
     using ClearCanvas.ImageServer.Enterprise;
+    using ClearCanvas.ImageServer.Enterprise.Command;
     using ClearCanvas.ImageServer.Model.EntityBrokers;
 
     [Serializable]
@@ -43,11 +44,13 @@ namespace ClearCanvas.ImageServer.Model
              String _sopClassUid_
             ,String _description_
             ,Boolean _nonImage_
+            ,Boolean _implicitOnly_
             ):base("ServerSopClass")
         {
             SopClassUid = _sopClassUid_;
             Description = _description_;
             NonImage = _nonImage_;
+            ImplicitOnly = _implicitOnly_;
         }
         #endregion
 
@@ -62,14 +65,17 @@ namespace ClearCanvas.ImageServer.Model
         [EntityFieldDatabaseMappingAttribute(TableName="ServerSopClass", ColumnName="NonImage")]
         public Boolean NonImage
         { get; set; }
+        [EntityFieldDatabaseMappingAttribute(TableName="ServerSopClass", ColumnName="ImplicitOnly")]
+        public Boolean ImplicitOnly
+        { get; set; }
         #endregion
 
         #region Static Methods
         static public ServerSopClass Load(ServerEntityKey key)
         {
-            using (var read = PersistentStoreRegistry.GetDefaultStore().OpenReadContext())
+            using (var context = new ServerExecutionContext())
             {
-                return Load(read, key);
+                return Load(context.ReadContext, key);
             }
         }
         static public ServerSopClass Load(IPersistenceContext read, ServerEntityKey key)
@@ -94,6 +100,7 @@ namespace ClearCanvas.ImageServer.Model
             updateColumns.SopClassUid = entity.SopClassUid;
             updateColumns.Description = entity.Description;
             updateColumns.NonImage = entity.NonImage;
+            updateColumns.ImplicitOnly = entity.ImplicitOnly;
             ServerSopClass newEntity = broker.Insert(updateColumns);
             return newEntity;
         }

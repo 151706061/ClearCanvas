@@ -25,6 +25,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Web;
 using System.Web.UI.WebControls;
 using ClearCanvas.Common;
 using ClearCanvas.Common.Utilities;
@@ -33,6 +34,8 @@ using ClearCanvas.Dicom.Audit;
 using ClearCanvas.Dicom.Iod;
 using ClearCanvas.Dicom.Utilities;
 using ClearCanvas.ImageServer.Common;
+using ClearCanvas.ImageServer.Common.Authentication;
+using ClearCanvas.ImageServer.Common.Helpers;
 using ClearCanvas.ImageServer.Core.Edit;
 using ClearCanvas.ImageServer.Model;
 using ClearCanvas.ImageServer.Model.EntityBrokers;
@@ -111,7 +114,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
                 return String.IsNullOrEmpty(v2) == false;
 
             //v1 is not null
-            return !v1.Equals(v2);
+            return !v1.Equals(v2, StringComparison.InvariantCulture);
         }
 
         private List<UpdateItem> GetChanges()
@@ -120,15 +123,16 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
             var oldPatientName = new PersonName(Study.PatientsName);
             var newPatientName = PatientNamePanel.PersonName;
 
-            if (!oldPatientName.AreSame(newPatientName, PersonNameComparisonOptions.CaseInsensitive))
+            if (!oldPatientName.AreSame(newPatientName, PersonNameComparisonOptions.CaseSensitive))
             {
                 var item = new UpdateItem(DicomTags.PatientsName, Study.PatientsName, PatientNamePanel.PersonName);
                 changes.Add(item);
             }
 
-            String dicomBirthDate = !(string.IsNullOrEmpty(PatientBirthDate.Text))
-                                        ? DateTime.ParseExact(PatientBirthDate.Text, InputDateParser.DateFormat, null).ToString(DicomConstants.DicomDate)
-                                        : "";
+	        String dicomBirthDate = string.IsNullOrEmpty(PatientBirthDate.Text)
+		        ? ""
+		        : DateTime.Parse(PatientBirthDate.Text).ToString(DicomConstants.DicomDate, CultureInfo.InvariantCulture);
+
             if (AreDifferent(Study.PatientsBirthDate, dicomBirthDate))
             {
                 var item = new UpdateItem(DicomTags.PatientsBirthDate, Study.PatientsBirthDate, dicomBirthDate);
@@ -178,7 +182,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
             var oldPhysicianName = new PersonName(Study.ReferringPhysiciansName);
             var newPhysicianName = ReferringPhysicianNamePanel.PersonName;
 
-            if (!newPhysicianName.AreSame(oldPhysicianName, PersonNameComparisonOptions.CaseInsensitive))
+            if (!newPhysicianName.AreSame(oldPhysicianName, PersonNameComparisonOptions.CaseSensitive))
             {
                 var item = new UpdateItem(DicomTags.ReferringPhysiciansName, Study.ReferringPhysiciansName, ReferringPhysicianNamePanel.PersonName.ToString());
                 changes.Add(item);
@@ -189,7 +193,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
             {
                 DateTime newStudyDate;
                 newDicomStudyDate = InputDateParser.TryParse(StudyDate.Text, out newStudyDate)
-                                        ? newStudyDate.ToString(DicomConstants.DicomDate)
+                                        ? newStudyDate.ToString(DicomConstants.DicomDate, CultureInfo.InvariantCulture) /* to ISO yyyyMMdd */
                                         : string.Empty;
             }
 
@@ -200,11 +204,18 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
             }
 
             int hh = String.IsNullOrEmpty(StudyTimeHours.Text)? 0:int.Parse(StudyTimeHours.Text);
-            int mm = int.Parse(StudyTimeMinutes.Text);
-            int ss = int.Parse(StudyTimeSeconds.Text);
+            int mm = String.IsNullOrEmpty(StudyTimeMinutes.Text) ? 0 : int.Parse(StudyTimeMinutes.Text);
+            int ss = String.IsNullOrEmpty(StudyTimeSeconds.Text) ? 0 : int.Parse(StudyTimeSeconds.Text);
             String dicomStudyTime = String.Format("{0:00}{1:00}{2:00}", hh, mm, ss);
 
-            if (AreDifferent(Study.StudyTime, dicomStudyTime))
+            // #9475 : if fraction is in the original time, it should be preserved unless the hours, minutes or seconds are modified.
+            var originalTime = Study.StudyTime;
+            if (!string.IsNullOrEmpty(originalTime) && originalTime.Contains("."))
+            {
+                originalTime = originalTime.Substring(0, originalTime.IndexOf(".", StringComparison.InvariantCultureIgnoreCase));
+            }
+
+            if (AreDifferent(originalTime, dicomStudyTime))
             {
                 var item = new UpdateItem(DicomTags.StudyTime, Study.StudyTime, dicomStudyTime);
                 changes.Add(item);
@@ -246,9 +257,8 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
             }
 
             PatientID.Text = Study.PatientId;
-            DateTime? birthDate = String.IsNullOrEmpty(Study.PatientsBirthDate)? null:DateParser.Parse(Study.PatientsBirthDate);
-            if (birthDate == null)
-                PatientBirthDate.Text = String.Empty; // calendar fills in the default date if it's null, we don't want that to happen.
+            DateTime? originalBirthDate = String.IsNullOrEmpty(Study.PatientsBirthDate)? (DateTime?) null:DateParser.Parse(Study.PatientsBirthDate);
+	        PatientBirthDateCalendarExtender.SelectedDate = originalBirthDate;
 
             if (!String.IsNullOrEmpty(Study.PatientsAge))
             {
@@ -336,12 +346,12 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
         {
             ReasonListBox.Items.Clear();
 
-            var broker = HttpContextData.Current.ReadContext.GetBroker<ICannedTextEntityBroker>();
+			var broker = HttpContext.Current.GetSharedPersistentContext().GetBroker<ICannedTextEntityBroker>();
             var criteria = new CannedTextSelectCriteria();
             criteria.Category.EqualTo(REASON_CANNEDTEXT_CATEGORY);
             IList<CannedText> list = broker.Find(criteria);
 
-            if (SessionManager.Current.User.IsInRole(Enterprise.Authentication.AuthorityTokens.Study.SaveReason))
+            if (SessionManager.Current.User.IsInRole(AuthorityTokens.Study.SaveReason))
             {
                 ReasonListBox.Items.Add(new ListItem(SR.CustomReason, SR.CustomReasonComment));
             } else
@@ -379,7 +389,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
 
             participant.ParticipantObjectDetailString = updateDescription;
             helper.AddStudyParticipantObject(participant);
-            ServerPlatform.LogAuditMessage(helper);
+            ServerAuditHelper.LogAuditMessage(helper);
         }
 
         private void SaveCustomReason()
@@ -424,8 +434,10 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
             EditStudyDetailsValidationSummary.HeaderText = ErrorMessages.EditStudyValidationError;
             EnsurePredefinedReasonsLoaded();
 
+			PatientBirthDate.Attributes.Add("readonly", "readonly");
+
             //Set up the control to handle custom reasons if the user has the authority.
-            if (!SessionManager.Current.User.IsInRole(Enterprise.Authentication.AuthorityTokens.Study.SaveReason))
+            if (!SessionManager.Current.User.IsInRole(AuthorityTokens.Study.SaveReason))
             {
                 ReasonSavePanel.Visible = false;
                 SaveReasonAsName.Attributes.Add("display", "none");
@@ -433,7 +445,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
             } else
             {
                 //Hide/Disable the "Save As Reason" textbox/validation depending on whether the user is using a custom reason or not.
-                ReasonListBox.Attributes.Add("onchange", "if(document.getElementById('" + ReasonListBox.ClientID + "').options[document.getElementById('" + ReasonListBox.ClientID + "').selectedIndex].text != '" + SR.CustomReason + "') { document.getElementById('" + ReasonSavePanel.ClientID + "').style.display = 'none'; document.getElementById('" + SaveReasonAsName.ClientID + "').style.display = 'none'; } else { document.getElementById('" + ReasonSavePanel.ClientID + "').style.display = 'inline'; document.getElementById('" + SaveReasonAsName.ClientID + "').style.display = 'inline'; }");
+                ReasonListBox.Attributes.Add("onchange", "if(document.getElementById('" + ReasonListBox.ClientID + "').options[document.getElementById('" + ReasonListBox.ClientID + "').selectedIndex].text != '" + SR.CustomReason + "') { document.getElementById('" + ReasonSavePanel.ClientID + "').style.display = 'none'; document.getElementById('" + SaveReasonAsName.ClientID + "').style.display = 'none'; } else { document.getElementById('" + ReasonSavePanel.ClientID + "').style.display = 'table-row'; document.getElementById('" + SaveReasonAsName.ClientID + "').style.display = 'table-cell'; }");
                 ReasonListBox.TextChanged += delegate
                 {
                     if (ReasonListBox.SelectedItem.Text == SR.CustomReason) SaveReasonAsNameValidator.Enabled = true;
@@ -445,7 +457,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
             StudyDateCalendarExtender.Format = pattern;
 
             var d = new DateTime(2008, 05, 27);
-            DateExampleLabel.Text = string.Format("({0})", string.Format(SR.Example, d.ToString(pattern)));
+            DateExampleLabel.Text = string.Format("({0})", string.Format(SR.Example, d.ToString(pattern, CultureInfo.InstalledUICulture)));
         }
 
         protected override void OnLoad(EventArgs e)
@@ -473,6 +485,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyDetails.Con
                 // Prevents the calendar from copying its value into the textbox
                 StudyDateCalendarExtender.SelectedDate = null;
             }
+
         }
 
         /// <summary>

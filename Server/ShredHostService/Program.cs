@@ -24,6 +24,7 @@
 
 using System.ServiceProcess;
 using System;
+using ClearCanvas.Common;
 using ClearCanvas.Common.Configuration;
 using ClearCanvas.Common.Utilities;
 using ClearCanvas.Server.ShredHost;
@@ -50,6 +51,8 @@ namespace ClearCanvas.Server.ShredHostService
         /// </summary>
         static void Main(string[] args)
         {
+			Platform.Log(LogLevel.Info, ProductInformation.GetNameAndVersion(true,true,true,true));
+
 			var commandLine = new CommandLine(args);
 
 			if (commandLine.RunAsService)
@@ -59,7 +62,7 @@ namespace ClearCanvas.Server.ShredHostService
 			}
 			else if (!String.IsNullOrEmpty(commandLine.PreviousExeConfigurationFilename))
 			{
-				var groups = SettingsGroupDescriptor.ListInstalledLocalSettingsGroups();
+				var groups = SettingsGroupDescriptor.ListInstalledSettingsGroups(SettingsGroupFilter.LocalStorage);
 				groups.Add(new SettingsGroupDescriptor(typeof (ShredSettingsMigrator).Assembly.GetType("ClearCanvas.Server.ShredHost.ShredHostServiceSettings")));
 				foreach (var group in groups)
 					SettingsMigrator.MigrateSharedSettings(group, commandLine.PreviousExeConfigurationFilename);

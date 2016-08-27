@@ -62,7 +62,7 @@ namespace ClearCanvas.Desktop.Help
 
 		public void ShowWebsite()
 		{
-			Execute("http://www.clearcanvas.ca", SR.URLNotFound);
+			Execute(HelpSettings.Default.WebsiteUrl, SR.URLNotFound);
 		}
 
 		public void ShowUsersGuide()
@@ -72,7 +72,7 @@ namespace ClearCanvas.Desktop.Help
 
 		public void ShowLicense()
 		{
-			Execute("EULA.rtf", SR.LicenseNotFound);
+			Execute(HelpSettings.Default.LicenseDocument, SR.LicenseNotFound);
 		}
 
 		public void ShowLogs()

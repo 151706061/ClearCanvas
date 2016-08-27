@@ -28,11 +28,11 @@ using ClearCanvas.Common.Utilities;
 
 namespace ClearCanvas.ImageViewer.Imaging
 {
-    //public interface IAdjustableDataLut : IDataLut, IBasicVoiLutLinear
-    //{
-    //    double BrightnessPercent { get; }
-    //    double ContrastPercent { get; }
-    //}
+	//public interface IAdjustableDataLut : IDataLut, IBasicVoiLutLinear
+	//{
+	//    double BrightnessPercent { get; }
+	//    double ContrastPercent { get; }
+	//}
 
 	/// <summary>
 	/// A class that wraps a <see cref="DataLut"/> inside an <see cref="IBasicVoiLutLinear"/>, in
@@ -44,13 +44,13 @@ namespace ClearCanvas.ImageViewer.Imaging
 	/// the full window, since the true values won't necessarily have any real meaning.
 	/// </remarks>
 	[Cloneable]
-    public class AdjustableDataLut : ComposableVoiLut, IDataLut, IBasicVoiLutLinear
+	public class AdjustableDataLut : ComposableVoiLut, IBasicVoiLutLinear
 	{
 		private class Memento
 		{
 			public readonly object DataLutMemento;
 			public readonly object LinearLutMemento;
-			
+
 			public Memento(object dataLutMemento, object linearLutMemento)
 			{
 				DataLutMemento = dataLutMemento;
@@ -70,14 +70,14 @@ namespace ClearCanvas.ImageViewer.Imaging
 
 			public override bool Equals(object obj)
 			{
-				if (Object.ReferenceEquals(obj, this))
+				if (ReferenceEquals(obj, this))
 					return true;
 
 				if (obj is Memento)
 				{
 					Memento other = obj as Memento;
-					return Object.Equals(other.DataLutMemento, DataLutMemento) && 
-							Object.Equals(other.LinearLutMemento, LinearLutMemento);
+					return Equals(other.DataLutMemento, DataLutMemento) &&
+					       Equals(other.LinearLutMemento, LinearLutMemento);
 				}
 
 				return false;
@@ -86,14 +86,8 @@ namespace ClearCanvas.ImageViewer.Imaging
 
 		#region Private Fields
 
-		private double _minInputValue;
-		private double _maxInputValue;
-
 		private readonly DataLut _dataLut;
 		private readonly BasicVoiLutLinear _linearLut;
-
-		[CloneIgnore]
-		private int[] _lutDataCache = null;
 
 		#endregion
 
@@ -163,56 +157,56 @@ namespace ClearCanvas.ImageViewer.Imaging
 
 		#endregion
 
-        #region IBasicVoiLutLinear Members
+		#region IBasicVoiLutLinear Members
 
-        /// <summary>
-        /// Gets or sets the Window Width.
-        /// </summary>
-        double IBasicVoiLutLinear.WindowWidth
-        {
-            get { return _linearLut.WindowWidth; }
-            set { _linearLut.WindowWidth = value; }
-        }
+		/// <summary>
+		/// Gets or sets the Window Width.
+		/// </summary>
+		double IBasicVoiLutLinear.WindowWidth
+		{
+			get { return _linearLut.WindowWidth; }
+			set { _linearLut.WindowWidth = value; }
+		}
 
-        /// <summary>
-        /// Gets or sets the Window Center.
-        /// </summary>
-        double IBasicVoiLutLinear.WindowCenter
-        {
-            get { return _linearLut.WindowCenter; }
-            set { _linearLut.WindowCenter = value; }
-        }
+		/// <summary>
+		/// Gets or sets the Window Center.
+		/// </summary>
+		double IBasicVoiLutLinear.WindowCenter
+		{
+			get { return _linearLut.WindowCenter; }
+			set { _linearLut.WindowCenter = value; }
+		}
 
-        #endregion
+		#endregion
 
-        #region IBasicVoiLutLinear Members
+		#region IVoiLutLinear Members
 
-        /// <summary>
-        /// Gets or sets the Window Width.
-        /// </summary>
-        double IVoiLutLinear.WindowWidth
-        {
-            get { return _linearLut.WindowWidth; }
-        }
+		/// <summary>
+		/// Gets or sets the Window Width.
+		/// </summary>
+		double IVoiLutLinear.WindowWidth
+		{
+			get { return _linearLut.WindowWidth; }
+		}
 
-        /// <summary>
-        /// Gets or sets the Window Center.
-        /// </summary>
-        double IVoiLutLinear.WindowCenter
-        {
-            get { return _linearLut.WindowCenter; }
-        }
+		/// <summary>
+		/// Gets or sets the Window Center.
+		/// </summary>
+		double IVoiLutLinear.WindowCenter
+		{
+			get { return _linearLut.WindowCenter; }
+		}
 
-        #endregion
+		#endregion
 
-        #region Public Properties
+		#region Public Properties
 
 		/// <summary>
 		/// Gets the underlying data lut.
 		/// </summary>
 		public DataLut DataLut
 		{
-			get { return _dataLut; }	
+			get { return _dataLut; }
 		}
 
 		/// <summary>
@@ -223,8 +217,8 @@ namespace ClearCanvas.ImageViewer.Imaging
 		/// </remarks>
 		public override double MinInputValue
 		{
-			get { return _minInputValue; }
-			set { _dataLut.MinInputValue = (int) Math.Round(_minInputValue = value); }
+			get { return _dataLut.MinInputValue; }
+			set { _dataLut.MinInputValue = (int) Math.Round(value); }
 		}
 
 		/// <summary>
@@ -235,60 +229,66 @@ namespace ClearCanvas.ImageViewer.Imaging
 		/// </remarks>
 		public override double MaxInputValue
 		{
-			get { return _maxInputValue; }
-			set { _dataLut.MaxInputValue = (int) Math.Round(_maxInputValue = value); }
+			get { return _dataLut.MaxInputValue; }
+			set { _dataLut.MaxInputValue = (int) Math.Round(value); }
 		}
 
 		/// <summary>
 		/// Gets the minimum output value.
 		/// </summary>
-		public override int MinOutputValue
+		public override double MinOutputValue
 		{
 			get { return _linearLut.MinOutputValue; }
-			protected set { throw new InvalidOperationException(SR.ExceptionMinimumOutputValueIsNotSettable); } 
+			protected set { throw new InvalidOperationException(SR.ExceptionMinimumOutputValueIsNotSettable); }
 		}
 
 		/// <summary>
 		/// Gets the maximum output value.
 		/// </summary>
-		public override int MaxOutputValue
+		public override double MaxOutputValue
 		{
 			get { return _linearLut.MaxOutputValue; }
 			protected set { throw new InvalidOperationException(SR.ExceptionMaximumOutputValueIsNotSettable); }
 		}
 
-        //TODO: later, add IContrastBrightnessLut and allow the properties to be set.
+		//TODO: later, add IContrastBrightnessLut and allow the properties to be set.
 
-        /// <summary>
-        /// The brightness as a percentage.
-        /// </summary>
-        /// <remarks>
-        /// This property is currently only settable by casting to <see cref="IBasicVoiLutLinear"/>.
-        /// </remarks>
-        public double BrightnessPercent
-        {
-            get { return 100 - (_linearLut.WindowCenter - _linearLut.MinInputValue) / FullWindow * 100; }
-        }
+		/// <summary>
+		/// The brightness as a percentage.
+		/// </summary>
+		/// <remarks>
+		/// This property is currently only settable by casting to <see cref="IBasicVoiLutLinear"/>.
+		/// </remarks>
+		public double BrightnessPercent
+		{
+			get { return 100 - (_linearLut.WindowCenter - _linearLut.MinInputValue)/FullWindow*100; }
+		}
 
-        /// <summary>
-        /// The contrast as a percentage.
-        /// </summary>
-        /// <remarks>
-        /// This property is currently only settable by casting to <see cref="IBasicVoiLutLinear"/>.
-        /// </remarks>
-        public double ContrastPercent
-        {
-            get { return _linearLut.WindowWidth / FullWindow * 100; }
-        }
+		/// <summary>
+		/// The contrast as a percentage.
+		/// </summary>
+		/// <remarks>
+		/// This property is currently only settable by casting to <see cref="IBasicVoiLutLinear"/>.
+		/// </remarks>
+		public double ContrastPercent
+		{
+			get { return _linearLut.WindowWidth/FullWindow*100; }
+		}
 
 		#endregion
 
 		/// <summary>
 		/// Gets the output value of the lut at a given input.
 		/// </summary>
-		public override int this[double input]
+		public override double this[double input]
 		{
 			get { return _linearLut[_dataLut[(int) Math.Round(input)]]; }
+		}
+
+		public override void LookupValues(double[] input, double[] output, int count)
+		{
+			LutFunctions.LookupLut(input, output, count, _dataLut.Data, _dataLut.FirstMappedPixelValue, _dataLut.LastMappedPixelValue);
+			_linearLut.LookupValues(output, output, count);
 		}
 
 		#region Public Methods
@@ -301,7 +301,7 @@ namespace ClearCanvas.ImageViewer.Imaging
 			UpdateMinMaxInputLinear();
 
 			_linearLut.WindowWidth = FullWindow;
-			_linearLut.WindowCenter = _dataLut.MinOutputValue + FullWindow / 2;
+			_linearLut.WindowCenter = _dataLut.MinOutputValue + FullWindow/2;
 
 			this.OnLutChanged();
 		}
@@ -316,7 +316,7 @@ namespace ClearCanvas.ImageViewer.Imaging
 		/// </remarks>
 		public override string GetKey()
 		{
-			return String.Format("{0}:{1}", _dataLut.GetKey(), _linearLut.GetKey());
+			return String.Format("{0}:{1}", ((IComposableLut)_dataLut).GetKey(), ((IComposableLut)_linearLut).GetKey());
 		}
 
 		/// <summary>
@@ -356,86 +356,9 @@ namespace ClearCanvas.ImageViewer.Imaging
 
 			if (lutMemento.DataLutMemento != null)
 				_dataLut.SetMemento(lutMemento.DataLutMemento);
-			
+
 			if (lutMemento.LinearLutMemento != null)
 				_linearLut.SetMemento(lutMemento.LinearLutMemento);
-		}
-
-		#endregion
-
-		#region Overrides
-
-		/// <summary>
-		/// Fires the <see cref="ComposableLutBase.LutChanged"/> event.
-		/// </summary>
-		/// <remarks>
-		/// Inheritors should call this method when any property of the Lut has changed.
-		/// </remarks>
-		protected override void OnLutChanged()
-		{
-			// when something changes, wipe the cached lut array
-			_lutDataCache = null;
-
-			base.OnLutChanged();
-		}
-
-		#endregion
-
-		#region IDataLut Members
-
-		int IDataLut.this[int index]
-		{
-			get { return this[index]; }
-		}
-
-		int IDataLut.MinInputValue
-		{
-			get { return (int) Math.Round(MinInputValue); }
-			set { MinInputValue = value; }
-		}
-
-		int IDataLut.MaxInputValue
-		{
-			get { return (int) Math.Round(MaxInputValue); }
-			set { MaxInputValue = value; }
-		}
-
-		int IDataLut.FirstMappedPixelValue
-		{
-			get { return _dataLut.FirstMappedPixelValue; }
-		}
-
-		int[] IDataLut.Data
-		{
-			get
-			{
-				if (_lutDataCache == null)
-				{
-					int lutLength = _dataLut.Length;
-					int[] lutData = new int[lutLength];
-
-					unsafe
-					{
-						fixed (int* output = lutData)
-						{
-							fixed (int* input = _dataLut.Data)
-							{
-								for (int n = 0; n < lutLength; n++)
-									output[n] = _linearLut[input[n]];
-							}
-						}
-					}
-
-					_lutDataCache = lutData;
-				}
-
-				return _lutDataCache;
-			}
-		}
-
-		IDataLut IDataLut.Clone()
-		{
-			return (IDataLut) Clone();
 		}
 
 		#endregion

@@ -23,6 +23,7 @@
 #endregion
 
 using System;
+using System.Globalization;
 using System.Xml;
 using System.Xml.Schema;
 using ClearCanvas.Common;
@@ -30,7 +31,7 @@ using ClearCanvas.Common.Specifications;
 
 namespace ClearCanvas.Dicom.Utilities.Rules.Specifications
 {
-    [ExtensionOf(typeof (XmlSpecificationCompilerOperatorExtensionPoint))]
+	[ExtensionOf(typeof(DicomRuleSpecificationCompilerOperatorExtensionPoint))]
     public class DicomAgeLessThanSpecificationOperator : IXmlSpecificationCompilerOperator
     {
         #region IXmlSpecificationCompilerOperator Members
@@ -151,7 +152,7 @@ namespace ClearCanvas.Dicom.Utilities.Rules.Specifications
 
                 DateTime comparisonTime = Platform.Time;
                 double time;
-                if (false == double.TryParse(_refValue, out time))
+                if (false == double.TryParse(_refValue, NumberStyles.Float, CultureInfo.InvariantCulture, out time))
                     throw new SpecificationException(Common.SR.ExceptionCastExpressionString);
 
                 if (_units.Equals("weeks"))

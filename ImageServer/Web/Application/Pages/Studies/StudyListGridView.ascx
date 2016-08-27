@@ -1,4 +1,4 @@
-<%--  License
+<%-- License
 
 // Copyright (c) 2013, ClearCanvas Inc.
 // All rights reserved.
@@ -20,16 +20,6 @@
 // the ClearCanvas RIS/PACS open source project.  If not, see
 // <http://www.gnu.org/licenses/>.
 
---%>
-
-<%-- License
-
-Copyright (c) 2011, ClearCanvas Inc.
-All rights reserved.
-http://www.clearcanvas.ca
-
-This software is licensed under the Open Software License v3.0.
-For the complete license, see http://www.clearcanvas.ca/OSLv3.0
 --%>
 
 <%@ Control Language="C#" AutoEventWireup="true" Inherits="ClearCanvas.ImageServer.Web.Application.Pages.Studies.StudyListGridView"
@@ -94,6 +84,14 @@ For the complete license, see http://www.clearcanvas.ca/OSLv3.0
 								    <asp:LinkButton runat="server" ID="QueueLinkButton" CssClass="StudyStatusLink" />
 								    <asp:Label ID="SeparatorLabel" runat="server" Text="- " />
 								    <asp:LinkButton runat="server" ID="ReconcileLinkButton" Text="<%$Resources: Labels, ReconcileLink %>" CssClass="StudyStatusLink" />
+							    </div>
+							</itemtemplate>
+						</asp:TemplateField>
+						
+						<asp:TemplateField HeaderText="<%$ Resources: ColumnHeaders, QCStatus %>" HeaderStyle-HorizontalAlign="Center" ItemStyle-HorizontalAlign="Center">
+							<itemtemplate>
+							    <div style="padding-right:4px">
+									<a runat="server" ID="QCStatusLink" target="_blank"></a>
 							    </div>
 							</itemtemplate>
 						</asp:TemplateField>

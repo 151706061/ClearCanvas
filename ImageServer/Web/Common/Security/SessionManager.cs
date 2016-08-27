@@ -23,6 +23,7 @@
 #endregion
 
 using System;
+using System.ServiceModel;
 using System.Threading;
 using System.Web;
 using System.Web.Security;
@@ -30,7 +31,9 @@ using ClearCanvas.Common;
 using ClearCanvas.Common.Utilities;
 using ClearCanvas.Dicom.Audit;
 using ClearCanvas.Enterprise.Common;
+using ClearCanvas.Enterprise.Common.Authentication;
 using ClearCanvas.ImageServer.Common;
+using ClearCanvas.ImageServer.Common.Helpers;
 using ClearCanvas.ImageServer.Web.Common.Utilities;
 using ClearCanvas.Web.Enterprise.Authentication;
 
@@ -44,7 +47,7 @@ namespace ClearCanvas.ImageServer.Web.Common.Security
 
         static SessionManager()
         {
-            Platform.Log(LogLevel.Info, " Initilizing SessionManager");
+            Platform.Log(LogLevel.Info, " Initializing SessionManager");
         }
 
         /// <summary>
@@ -75,6 +78,28 @@ namespace ClearCanvas.ImageServer.Web.Common.Security
         
         }
 
+		/// <summary>
+		/// Gets the redirect url for the current session
+		/// </summary>
+		/// <param name="session"></param>
+		/// <returns></returns>
+		public static String GetRedirectUrl(SessionInfo session)
+		{
+			Platform.CheckForNullReference(session, "session");
+
+			var redirectUrl = FormsAuthentication.GetRedirectUrl(session.User.Identity.Name, false);
+			if (VirtualPathUtility.IsAbsolute(redirectUrl) || VirtualPathUtility.IsAppRelative(redirectUrl))
+			{
+				return redirectUrl;
+			}
+
+			var tokenParam = "userId=" + session.User.Identity.Name + "&sessionId=" + session.Credentials.SessionToken.Id;
+			var uri = new UriBuilder(redirectUrl);
+			uri.Query = string.IsNullOrEmpty(uri.Query) ? tokenParam : uri.Query.Substring(1)+"&" + tokenParam;
+			
+			return uri.ToString();
+		}
+
         /// <summary>
         /// Sets up the principal for the thread and save the authentiction ticket.
         /// </summary>
@@ -101,8 +126,8 @@ namespace ClearCanvas.ImageServer.Web.Common.Security
                 SessionToken token = session.Credentials.SessionToken;
                 string[] authorities = session.Credentials.Authorities;                
 
-                String data = String.Format("{0}|{1}|{2}", token.Id, displayName, 
-                    StringUtilities.Combine(session.User.WarningMessages,"@"));
+                String data = String.Format("{0}|{1}|{2}|{3}", token.Id, displayName, 
+                    StringUtilities.Combine(session.User.WarningMessages,"@"), session.User.WarningsDisplayed);
 
                 // the expiry time is determined by the authentication service
                 DateTime expiryTime = token.ExpiryTime; 
@@ -122,6 +147,8 @@ namespace ClearCanvas.ImageServer.Web.Common.Security
 
                 //Create an unencrypted cookie that contains the userid and the expiry time so the browser
                 //can check for session timeout.
+
+                //TODO: store the expiry time as epoch instead so we don't need to deal with format or regional settings madness
                 var expiryCookie = new HttpCookie(GetExpiryTimeCookieName(session), DateTimeFormatter.Format(expiryTime.ToUniversalTime(), ImageServerConstants.CookieDateTimeFormat));
                 
                 HttpContext.Current.Response.Cookies.Add(authCookie);
@@ -131,15 +158,6 @@ namespace ClearCanvas.ImageServer.Web.Common.Security
             }
         }
 
-        /// <summary>
-        /// Logs in and intializes the session using the given username and password.
-        /// </summary>
-        /// <param name="username"></param>
-        /// <param name="password"></param>
-        public static SessionInfo InitializeSession(string username, string password)
-        {
-            return InitializeSession(username, password, ImageServerConstants.DefaultApplicationName, true);
-        }
 
         /// <summary>
         /// Logs in and intializes the session using the given username and password.
@@ -149,7 +167,7 @@ namespace ClearCanvas.ImageServer.Web.Common.Security
         /// <param name="appName"></param>
         public static SessionInfo InitializeSession(string username, string password, string appName)
         {
-                return InitializeSession(username, password, ImageServerConstants.DefaultApplicationName, true);
+			return InitializeSession(username, password, appName, true);
         }
 
         /// <summary>
@@ -167,7 +185,10 @@ namespace ClearCanvas.ImageServer.Web.Common.Security
                 InitializeSession(session);
                 Platform.Log(LogLevel.Info, "[{0}]: {1} has successfully logged in.", appName, username);
 
-                if(redirect) HttpContext.Current.Response.Redirect(FormsAuthentication.GetRedirectUrl(username, false), false);
+                if(redirect)
+                {
+					HttpContext.Current.Response.Redirect(GetRedirectUrl(session), false);
+                }
                 return session;
             }
         }
@@ -233,21 +254,66 @@ namespace ClearCanvas.ImageServer.Web.Common.Security
                 {
                     Platform.Log(LogLevel.Warn, e, "Failed to log user out.");
                 }
-
-                UserAuthenticationAuditHelper audit = new UserAuthenticationAuditHelper(
-                    ServerPlatform.AuditSource,
-                    EventIdentificationContentsEventOutcomeIndicator.Success,
-                    UserAuthenticationEventType.Logout);
-                audit.AddUserParticipant(new AuditPersonActiveParticipant(
-                                             session.Credentials.UserName,
-                                             null,
-                                             session.Credentials.DisplayName));
-                ServerPlatform.LogAuditMessage(audit);
             }
-            
-
-        
         }
+
+		/// <summary>
+		/// Renew the current session
+		/// </summary>
+		public static void RenewSession()
+		{
+			var session = Current;
+
+			if (session != null)
+			{
+				using (var service = new LoginService())
+				{
+					SessionInfo sessionInfo = service.Renew(session.Credentials.SessionToken.Id, true /* force to bypass local cache */);
+					InitializeSession(sessionInfo);
+				}
+			}
+			
+		}
+
+
+		/// <summary>
+		/// Verifies the specified session 
+		/// </summary>
+		/// <param name="userId"></param>
+		/// <param name="sessionToken"></param>
+		/// <param name="authorityTokens"></param>
+		/// <param name="bypassCache">True to always bypass the response cache and get a "fresh" response from the server.</param>
+		/// <returns></returns>
+		public static bool VerifySession(string userId, string sessionToken, out string[] authorityTokens, bool bypassCache = false)
+		{
+			try
+			{
+				ValidateSessionResponse response = null;
+				var request = new ValidateSessionRequest(userId, new SessionToken(sessionToken));
+				if (bypassCache)
+				{
+					using (new ResponseCacheBypassScope())
+					{
+						Platform.GetService<IAuthenticationService>(service => response = service.ValidateSession(request));
+					}
+				}
+				else
+				{
+					Platform.GetService<IAuthenticationService>(service => response = service.ValidateSession(request));
+				}
+
+				authorityTokens = response.AuthorityTokens;
+				return response.SessionToken.ExpiryTime > Platform.Time; //TODO : Utc?
+			}
+			catch (FaultException<InvalidUserSessionException> e)
+			{
+
+			}
+
+			authorityTokens = null;
+			return false;
+		}
+
 
 
         /// <summary>
@@ -286,8 +352,7 @@ namespace ClearCanvas.ImageServer.Web.Common.Security
 			// other pages to redirect to the login page instead. (see SessionTimeout.ascx)
             HttpCookie expiryCookie = new HttpCookie(GetExpiryTimeCookieName(session))
             {
-                Expires = Platform.Time.AddMinutes(5),
-                Value = string.Empty
+				Expires = Platform.Time.AddSeconds(-1)
             };
 
             HttpContext.Current.Response.Cookies.Set(expiryCookie);

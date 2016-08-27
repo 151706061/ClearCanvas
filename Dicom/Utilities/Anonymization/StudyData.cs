@@ -32,7 +32,7 @@ namespace ClearCanvas.Dicom.Utilities.Anonymization
 	/// A class containing commonly anonymized dicom study attributes.
 	/// </summary>
 	[Cloneable(true)]
-	public class StudyData
+	public class StudyData : IStudyRootData
 	{
 		private string _patientId = "";
 		private string _patientsNameRaw = "";
@@ -43,12 +43,29 @@ namespace ClearCanvas.Dicom.Utilities.Anonymization
 		private string _studyDescription = "";
 		private string _studyId = "";
 		private string _studyDateRaw = "";
+		private string _patientsAge = "";
+		/// <summary>
+		/// Constructor.
+		/// </summary>
+		public StudyData() {}
 
 		/// <summary>
 		/// Constructor.
 		/// </summary>
-		public StudyData()
+		public StudyData(IStudyRootData sourceData)
 		{
+			if (sourceData != null)
+			{
+				_patientId = sourceData.PatientId;
+				_patientsNameRaw = sourceData.PatientsName;
+				_patientsBirthDateRaw = sourceData.PatientsBirthDate;
+				_patientsSex = sourceData.PatientsSex;
+				_accessionNumber = sourceData.AccessionNumber;
+				_studyDescription = sourceData.StudyDescription;
+				_studyId = sourceData.StudyId;
+				_studyDateRaw = sourceData.StudyDate;
+				_patientsAge = sourceData.PatientsAge;
+			}
 		}
 
 		/// <summary>
@@ -56,7 +73,7 @@ namespace ClearCanvas.Dicom.Utilities.Anonymization
 		/// </summary>
 		public PersonName PatientsName
 		{
-			get { return new PersonName(PatientsNameRaw); }	
+			get { return new PersonName(PatientsNameRaw); }
 			set
 			{
 				string p = null;
@@ -72,10 +89,7 @@ namespace ClearCanvas.Dicom.Utilities.Anonymization
 		/// </summary>
 		public DateTime? StudyDate
 		{
-			get
-			{
-				return DateParser.Parse(StudyDateRaw);
-			}
+			get { return DateParser.Parse(StudyDateRaw); }
 			set
 			{
 				if (value == null)
@@ -90,10 +104,7 @@ namespace ClearCanvas.Dicom.Utilities.Anonymization
 		/// </summary>
 		public DateTime? PatientsBirthDate
 		{
-			get
-			{
-				return DateParser.Parse(PatientsBirthDateRaw);
-			}
+			get { return DateParser.Parse(PatientsBirthDateRaw); }
 			set
 			{
 				if (value == null)
@@ -141,6 +152,16 @@ namespace ClearCanvas.Dicom.Utilities.Anonymization
 		{
 			get { return _patientsSex; }
 			set { _patientsSex = value ?? ""; }
+		}
+
+		/// <summary>
+		/// Gets or sets the patient's age
+		/// </summary>
+		[DicomField(DicomTags.PatientsAge)]
+		public string PatientsAge
+		{
+			get { return _patientsAge; }
+			set { _patientsAge = value ?? ""; }
 		}
 
 		/// <summary>
@@ -208,5 +229,119 @@ namespace ClearCanvas.Dicom.Utilities.Anonymization
 		{
 			return CloneBuilder.Clone(this) as StudyData;
 		}
+
+		#region IStudyRootData Implementation
+
+		string IStudyData.StudyInstanceUid
+		{
+			get { return string.Empty; }
+		}
+
+		string[] IStudyData.SopClassesInStudy
+		{
+			get { return new string[0]; }
+		}
+
+		string[] IStudyData.ModalitiesInStudy
+		{
+			get { return new string[0]; }
+		}
+
+		string IStudyData.StudyDate
+		{
+			get { return StudyDateRaw; }
+		}
+
+		string IStudyData.StudyTime
+		{
+			get { return string.Empty; }
+		}
+
+		string IStudyData.ReferringPhysiciansName
+		{
+			get { return string.Empty; }
+		}
+
+		int? IStudyData.NumberOfStudyRelatedSeries
+		{
+			get { return null; }
+		}
+
+		int? IStudyData.NumberOfStudyRelatedInstances
+		{
+			get { return null; }
+		}
+
+		string IPatientData.PatientsName
+		{
+			get { return PatientsNameRaw; }
+		}
+
+		string IPatientData.PatientsBirthDate
+		{
+			get { return PatientsBirthDateRaw; }
+		}
+
+		string IPatientData.PatientsBirthTime
+		{
+			get { return string.Empty; }
+		}
+
+		string IPatientData.PatientSpeciesDescription
+		{
+			get { return string.Empty; }
+		}
+
+		string IPatientData.PatientSpeciesCodeSequenceCodingSchemeDesignator
+		{
+			get { return string.Empty; }
+		}
+
+		string IPatientData.PatientSpeciesCodeSequenceCodeValue
+		{
+			get { return string.Empty; }
+		}
+
+		string IPatientData.PatientSpeciesCodeSequenceCodeMeaning
+		{
+			get { return string.Empty; }
+		}
+
+		string IPatientData.PatientBreedDescription
+		{
+			get { return string.Empty; }
+		}
+
+		string IPatientData.PatientBreedCodeSequenceCodingSchemeDesignator
+		{
+			get { return string.Empty; }
+		}
+
+		string IPatientData.PatientBreedCodeSequenceCodeValue
+		{
+			get { return string.Empty; }
+		}
+
+		string IPatientData.PatientBreedCodeSequenceCodeMeaning
+		{
+			get { return string.Empty; }
+		}
+
+		string IPatientData.ResponsiblePerson
+		{
+			get { return string.Empty; }
+		}
+
+		string IPatientData.ResponsiblePersonRole
+		{
+			get { return string.Empty; }
+		}
+
+		string IPatientData.ResponsibleOrganization
+		{
+			get { return string.Empty; }
+		}
+
+		#endregion
 	}
 }

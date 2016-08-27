@@ -56,14 +56,11 @@ namespace ClearCanvas.ImageViewer.Tools.Standard.View.WinForms
 			_startPointTile = startPointTile;
             _render = render;
 
-            _surface = image.ImageRenderer.GetRenderingSurface(Handle, ClientRectangle.Width, ClientRectangle.Height);
+            _surface = image.ImageRenderer.CreateRenderingSurface(Handle, ClientRectangle.Width, ClientRectangle.Height, RenderingSurfaceType.Onscreen);
+			_surface.Invalidated += OnSurfaceInvalidated;
 
             _startPointDesktop = Centre = Cursor.Position;
 		}
-
-		#region Unused Code
-
-		#endregion
 
 		public void UpdateMousePosition(Point positionTile)
 		{
@@ -89,6 +86,11 @@ namespace ClearCanvas.ImageViewer.Tools.Standard.View.WinForms
 			}
 		}
 
+		private void OnSurfaceInvalidated(object sender, EventArgs e)
+		{
+			Invalidate();
+		}
+
 		protected override void OnPaintBackground(PaintEventArgs e)
 		{
 			//base.OnPaintBackground(e);
@@ -99,9 +101,15 @@ namespace ClearCanvas.ImageViewer.Tools.Standard.View.WinForms
             if (_surface != null)
             {
                 _surface.ContextID = e.Graphics.GetHdc();
-                var args = new DrawArgs(_surface, new WinFormsScreenProxy(Screen.FromControl(this)), DrawMode.Refresh);
-                _render(args);
-                e.Graphics.ReleaseHdc(_surface.ContextID);
+                try
+                {
+                    var args = new DrawArgs(_surface, new WinFormsScreenProxy(Screen.FromControl(this)), DrawMode.Refresh);
+                    _render(args);
+                }
+                finally
+                {
+                    e.Graphics.ReleaseHdc(_surface.ContextID);
+                }
             }
 
 		    //base.OnPaint(e);
@@ -131,11 +139,17 @@ namespace ClearCanvas.ImageViewer.Tools.Standard.View.WinForms
             using (var graphics = base.CreateGraphics())
             {
                 _surface.ContextID = graphics.GetHdc();
-                var args = new DrawArgs(_surface, new WinFormsScreenProxy(Screen.FromControl(this)), DrawMode.Render);
-                _render(args);
-                args = new DrawArgs(_surface, new WinFormsScreenProxy(Screen.FromControl(this)), DrawMode.Refresh);
-                _render(args);
-                graphics.ReleaseHdc(_surface.ContextID);
+                try
+                {
+                    var args = new DrawArgs(_surface, new WinFormsScreenProxy(Screen.FromControl(this)), DrawMode.Render);
+                    _render(args);
+                    args = new DrawArgs(_surface, new WinFormsScreenProxy(Screen.FromControl(this)), DrawMode.Refresh);
+                    _render(args);
+                }
+                finally 
+                {
+                    graphics.ReleaseHdc(_surface.ContextID);
+                }
             }
         }
         
@@ -143,6 +157,7 @@ namespace ClearCanvas.ImageViewer.Tools.Standard.View.WinForms
 		{
 			if (_surface != null)
 			{
+				_surface.Invalidated -= OnSurfaceInvalidated;
                 _surface.Dispose();
                 _surface = null;
 			}

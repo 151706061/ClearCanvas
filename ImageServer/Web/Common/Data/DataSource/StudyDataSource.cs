@@ -24,14 +24,18 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Threading;
+using System.Web;
 using ClearCanvas.Enterprise.Core;
-using ClearCanvas.ImageServer.Common;
+using ClearCanvas.ImageServer.Common.Authentication;
+using ClearCanvas.ImageServer.Core;
+using ClearCanvas.ImageServer.Core.Helpers;
 using ClearCanvas.ImageServer.Core.Query;
 using ClearCanvas.ImageServer.Enterprise;
 using ClearCanvas.ImageServer.Model;
 using ClearCanvas.ImageServer.Model.EntityBrokers;
-using ClearCanvas.ImageServer.Enterprise.Authentication;
 
 namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
 {
@@ -157,7 +161,7 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
                     IList<WorkQueue> workqueueItems = controller.GetWorkQueueItems(TheStudy);
                     foreach (WorkQueue item in workqueueItems)
                     {
-                        if (!ServerPlatform.IsActiveWorkQueue(item))
+                        if (!WorkQueueHelper.IsActiveWorkQueue(item))
                         {
                             _requiresWorkQueueAttention = true;
                             break;
@@ -167,7 +171,11 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
 
                 return _requiresWorkQueueAttention.Value;
             }
-        } 
+        }
+
+		public bool HasOrder { get; set; }
+		public bool OrderRequiresQC { get; set; }
+		public bool StudyIsQCed { get; set; }
 
 		public bool CanScheduleDelete(out string reason)
 		{
@@ -184,6 +192,11 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
 			if (IsNearline)
 			{
 				reason = SR.ActionNotAllowed_StudyIsNearline;
+				return false;
+			}
+			if (ThePartition.ServerPartitionTypeEnum.Equals(ServerPartitionTypeEnum.VFS))
+			{
+				reason = SR.ActionNotAllowed_ResearchPartition;
 				return false;
 			}
 
@@ -267,7 +280,8 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
             get { return TheArchiveLocation != null && TheArchiveLocation.ServerTransferSyntax.Lossless; }
 	    }
 
-	    public bool CanScheduleMove(out string reason)
+
+		public bool CanScheduleMove(out string reason)
 		{
 			if (IsLocked)
 			{
@@ -310,7 +324,13 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
         }
 
 	    public bool CanScheduleRestore(out string reason)
-		{
+	    {
+		    if (IsNearline)
+		    {
+			    reason = String.Empty;
+				return true;
+			} 
+			
 			if (IsArchiving)
 			{
 				reason = SR.ActionNotAllowed_StudyIsBeingArchived;
@@ -443,6 +463,8 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
 
 		public string[] Statuses { get; set; }
 
+		public QCStatusEnum[] QCStatuses { get; set; }
+
 		#endregion
 
 		#region Private Methods
@@ -459,21 +481,21 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
 			criteria.PatientsName.SortAsc(0);
 
             QueryHelper.SetGuiStringCondition(criteria.AccessionNumber, AccessionNumber);
-
+			
             if (!String.IsNullOrEmpty(ToStudyDate) && !String.IsNullOrEmpty(FromStudyDate))
 			{
-                string toKey = DateTime.ParseExact(ToStudyDate, DateFormats, null).ToString(STUDYDATE_DATEFORMAT) + " 23:59:59.997";
-                string fromKey = DateTime.ParseExact(FromStudyDate, DateFormats, null).ToString(STUDYDATE_DATEFORMAT);
+				string toKey = DateTime.ParseExact(ToStudyDate, DateFormats, null).ToString(STUDYDATE_DATEFORMAT, CultureInfo.InvariantCulture) + " 23:59:59.997";
+				string fromKey = DateTime.ParseExact(FromStudyDate, DateFormats, null).ToString(STUDYDATE_DATEFORMAT, CultureInfo.InvariantCulture);
 				criteria.StudyDate.Between(fromKey, toKey);
             }
             else if (!String.IsNullOrEmpty(ToStudyDate))
             {
-                string toKey = DateTime.ParseExact(ToStudyDate, DateFormats, null).ToString(STUDYDATE_DATEFORMAT);
+				string toKey = DateTime.ParseExact(ToStudyDate, DateFormats, null).ToString(STUDYDATE_DATEFORMAT, CultureInfo.InvariantCulture);
                 criteria.StudyDate.LessThanOrEqualTo(toKey);
             }
             else if (!String.IsNullOrEmpty(FromStudyDate))
             {
-                string fromKey = DateTime.ParseExact(FromStudyDate, DateFormats, null).ToString(STUDYDATE_DATEFORMAT);
+				string fromKey = DateTime.ParseExact(FromStudyDate, DateFormats, null).ToString(STUDYDATE_DATEFORMAT, CultureInfo.InvariantCulture);
                 criteria.StudyDate.MoreThanOrEqualTo(fromKey);
             }
 
@@ -510,6 +532,12 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
                 criteria.StudyStorageRelatedEntityCondition.Exists(storageCriteria);
             }
 
+
+			if (QCStatuses != null && QCStatuses.Length > 0)
+			{
+				criteria.QCStatusEnum.In(QCStatuses);
+			}
+
 			return criteria;
 		}
 
@@ -527,7 +555,7 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
 			_list = new List<StudySummary>();
 
 			foreach (Study study in studyList)
-                _list.Add(StudySummaryAssembler.CreateStudySummary(HttpContextData.Current.ReadContext, study));
+				_list.Add(StudySummaryAssembler.CreateStudySummary(HttpContext.Current.GetSharedPersistentContext(), study));
 
 			if (StudyFoundSet != null)
 				StudyFoundSet(_list);
@@ -548,7 +576,6 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
 
 
 		#endregion
-
 	}
 
 	public class StudySummaryAssembler
@@ -573,6 +600,8 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
 			var studySummary = new StudySummary();
 			var controller = new StudyController();
 
+			studySummary.TheStudy = study;
+
 			studySummary.Key = study.GetKey();
 			studySummary.AccessionNumber = study.AccessionNumber;
 			studySummary.NumberOfStudyRelatedInstances = study.NumberOfStudyRelatedInstances;
@@ -588,7 +617,16 @@ namespace ClearCanvas.ImageServer.Web.Common.Data.DataSource
 		    studySummary.ResponsiblePerson = study.ResponsiblePerson;
 			studySummary.StudyTime = study.StudyTime;
 			studySummary.StudyId = study.StudyId;
-			studySummary.TheStudy = study;
+			studySummary.HasOrder = study.OrderKey != null;
+
+			if (study.OrderKey != null)
+			{
+				var order = Order.Load(study.OrderKey);
+				studySummary.OrderRequiresQC = order.QCExpected;
+				studySummary.StudyIsQCed = (study.QCStatusEnum != null && study.QCStatusEnum != QCStatusEnum.NA);
+			}
+			
+			
 
 			studySummary.ThePartition = ServerPartitionMonitor.Instance.FindPartition(study.ServerPartitionKey) ??
 			                            ServerPartition.Load(read, study.ServerPartitionKey);

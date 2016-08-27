@@ -43,41 +43,58 @@ namespace ClearCanvas.Enterprise.Common.ServiceConfiguration.Server
 		/// <param name="args"></param>
 		public void ConfigureServiceHost(ServiceHost host, ServiceHostConfigurationArgs args)
 		{
-            NetTcpBinding binding = new NetTcpBinding();
-			binding.MaxReceivedMessageSize = args.MaxReceivedMessageSize;
-            binding.ReaderQuotas.MaxStringContentLength = args.MaxReceivedMessageSize;
-            binding.ReaderQuotas.MaxArrayLength = args.MaxReceivedMessageSize;
-			binding.Security.Mode = args.Authenticated ? SecurityMode.TransportWithMessageCredential : SecurityMode.Transport;
-			binding.Security.Message.ClientCredentialType = args.Authenticated ?
-				MessageCredentialType.UserName : MessageCredentialType.None;
+			var binding = new NetTcpBinding
+				{
+					MaxReceivedMessageSize = args.TransferMode == TransferMode.Buffered
+						                         ? Math.Min(int.MaxValue, args.MaxReceivedMessageSize)
+						                         : args.MaxReceivedMessageSize,
+					TransferMode = args.TransferMode,
+					ReaderQuotas =
+						{
+							MaxStringContentLength = (int) Math.Min(int.MaxValue, args.MaxReceivedMessageSize),
+							MaxArrayLength = (int) Math.Min(int.MaxValue, args.MaxReceivedMessageSize)
+						},
+					Security =
+						{
+							Mode = args.Authenticated ? SecurityMode.TransportWithMessageCredential : SecurityMode.Transport,
+							Message =
+								{
+									ClientCredentialType = args.Authenticated
+										                       ? MessageCredentialType.UserName
+										                       : MessageCredentialType.None
+								},
+							// turn off transport security altogether
+							Transport = {ClientCredentialType = TcpClientCredentialType.None}
+						}
+				};
 
-			// turn off transport security altogether
-			binding.Security.Transport.ClientCredentialType = TcpClientCredentialType.None;
+			if (args.SendTimeoutSeconds > 0)
+				binding.SendTimeout = TimeSpan.FromSeconds(args.SendTimeoutSeconds);
 
 			// establish endpoint
 			host.AddServiceEndpoint(args.ServiceContract, binding, "");
 
-#if DEBUG
+#if DEBUG && MEX
 			// We need to expose the metadata in order to generate client proxy code for some service
 			// used in applications that cannot reference any CC assemblies (e.g utilities for installer).
-            if (host.Description.Behaviors.Find<ServiceMetadataBehavior>() == null)
-            {
-                
-                ServiceMetadataBehavior smb = new ServiceMetadataBehavior();
-                smb.HttpGetEnabled = true;
-                smb.HttpGetUrl = new Uri(string.Format("http://localhost:{0}/{1}/mex", args.HostUri.Port+1, args.ServiceContract.Name));
-                Platform.Log(LogLevel.Debug, "Service Metadata endpoint: {0}", smb.HttpGetUrl);
-                host.Description.Behaviors.Add(smb);
-            }
-            var endpoint = host.AddServiceEndpoint(typeof(IMetadataExchange), binding, args.ServiceContract.Name);
-            Platform.Log(LogLevel.Debug, "MetadataExchange Endpoint for {0}: {1}", args.ServiceContract.Name, endpoint.ListenUri);
-            
+			if (host.Description.Behaviors.Find<ServiceMetadataBehavior>() == null)
+			{
+
+				var smb = new ServiceMetadataBehavior();
+				smb.HttpGetEnabled = true;
+				smb.HttpGetUrl = new Uri(string.Format("http://localhost:{0}/{1}/mex", args.HostUri.Port + 1, args.ServiceContract.Name));
+				Platform.Log(LogLevel.Debug, "Service Metadata endpoint: {0}", smb.HttpGetUrl);
+				host.Description.Behaviors.Add(smb);
+			}
+			var endpoint = host.AddServiceEndpoint(typeof(IMetadataExchange), binding, args.ServiceContract.Name);
+			Platform.Log(LogLevel.Debug, "MetadataExchange Endpoint for {0}: {1}", args.ServiceContract.Name, endpoint.ListenUri);
+
 #endif
 
 			// set up the certificate - required for transmitting custom credentials
-            host.Credentials.ServiceCertificate.SetCertificate(
-		        args.CertificateSearchDirective.StoreLocation, args.CertificateSearchDirective.StoreName,
-		        args.CertificateSearchDirective.FindType, args.CertificateSearchDirective.FindValue);
+			host.Credentials.ServiceCertificate.SetCertificate(
+				args.CertificateSearchDirective.StoreLocation, args.CertificateSearchDirective.StoreName,
+				args.CertificateSearchDirective.FindType, args.CertificateSearchDirective.FindValue);
 		}
 
 		#endregion

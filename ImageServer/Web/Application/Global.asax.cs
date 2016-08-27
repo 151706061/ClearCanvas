@@ -23,16 +23,11 @@
 #endregion
 
 using System;
-using System.Data;
 using System.Configuration;
-using System.Collections;
-using System.Web;
-using System.Web.Security;
 using System.Web.SessionState;
 using ClearCanvas.Common;
 using ClearCanvas.ImageServer.Web.Common.Security;
 using ClearCanvas.ImageServer.Web.Common;
-using System.Reflection;
 
 namespace ClearCanvas.ImageServer.Web.Application
 {
@@ -43,6 +38,8 @@ namespace ClearCanvas.ImageServer.Web.Application
         protected void Application_BeginRequest(object sender, EventArgs e)
         {
             start = DateTime.Now;
+            if (Context.Request.Path.Contains("ApplicationService.svc"))
+                Context.SetSessionStateBehavior(SessionStateBehavior.Disabled);
         }
 
         protected void Application_EndRequest(object sender, EventArgs e)

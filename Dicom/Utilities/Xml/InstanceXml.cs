@@ -27,6 +27,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Security;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -130,6 +131,8 @@ namespace ClearCanvas.Dicom.Utilities.Xml
 		{
 			get { return _transferSyntax; }
 		}
+
+		public string XmlFragment { get; set; }
 
 		/// <summary>
 		/// Gets the underlying data as a <see cref="DicomAttributeCollection"/>.
@@ -300,6 +303,7 @@ namespace ClearCanvas.Dicom.Utilities.Xml
 			{
 				// force the element to be regenerated when GetMemento() is called
 				_cachedElement = null;
+				XmlFragment = null;
 			}
 
 			_baseInstance = baseInstance;
@@ -362,6 +366,7 @@ namespace ClearCanvas.Dicom.Utilities.Xml
 			if ((attribute is DicomAttributeOB)
 			 || (attribute is DicomAttributeOW)
 			 || (attribute is DicomAttributeOF)
+			 || (attribute is DicomAttributeOD)
 			 || (attribute is DicomFragmentSequence))
 				return StudyXmlTagInclusion.IncludeTagExclusion;
 
@@ -603,13 +608,17 @@ namespace ClearCanvas.Dicom.Utilities.Xml
 
 			List<DicomTag> newlyExcludedTags = new List<DicomTag>();
 
+			// pre-sort the list of excluded tags, so that finding an entry in the list is as fast as a binary search
+			var thisCollectionExcludedTags = thisCollection != null ? thisCollection.ExcludedTags.Select(u => u.TagValue).OrderBy(u => u).ToList() : null;
+			var privateBaseCollectionExcludedTags = privateBaseCollection != null ? privateBaseCollection.ExcludedTags.Select(u => u.TagValue).OrderBy(u => u).ToList() : null;
+
 			foreach (DicomAttribute attribute in collection)
 			{
-				bool isExcludedFromThisCollection = thisCollection != null && 
-					thisCollection.IsTagExcluded(attribute.Tag.TagValue);
+				bool isExcludedFromThisCollection = thisCollectionExcludedTags != null &&
+					thisCollectionExcludedTags.BinarySearch(attribute.Tag.TagValue) >= 0;
 
-				bool isExcludedFromBase = privateBaseCollection != null && 
-					privateBaseCollection.ExcludedTagsHelper.IsTagExcluded(attribute.Tag.TagValue);
+				bool isExcludedFromBase = privateBaseCollectionExcludedTags != null &&
+					privateBaseCollectionExcludedTags.BinarySearch(attribute.Tag.TagValue) >= 0;
 
 				bool isInBase = isExcludedFromBase;
 				bool isSameAsInBase = isExcludedFromThisCollection && isExcludedFromBase;
@@ -645,6 +654,7 @@ namespace ClearCanvas.Dicom.Utilities.Xml
 								if (!(attribute is DicomAttributeOB)
 								    && !(attribute is DicomAttributeOW)
 								    && !(attribute is DicomAttributeOF)
+								    && !(attribute is DicomAttributeOD)
 								    && !(attribute is DicomFragmentSequence))
 								{
 									if (attribute.Equals(baseIterator.Current))
@@ -714,6 +724,20 @@ namespace ClearCanvas.Dicom.Utilities.Xml
 
 					StringBuilder str = null;
 					foreach (byte i in val)
+					{
+						if (str == null)
+							str = new StringBuilder(i.ToString());
+						else
+							str.AppendFormat("\\{0}", i);
+					}
+					if (str != null)
+						instanceElement.InnerText = str.ToString();
+				}
+				else if (attribute is DicomAttributeOD)
+				{
+					double[] val = (double[])attribute.Values;
+					StringBuilder str = null;
+					foreach (double i in val)
 					{
 						if (str == null)
 							str = new StringBuilder(i.ToString());
@@ -833,15 +857,18 @@ namespace ClearCanvas.Dicom.Utilities.Xml
 			return result;
 		}
 
-		private static string XmlUnescapeString(string input)
+        private static readonly Regex _unescapeRegex1 = new Regex("&#[Xx]([0-9A-Fa-f]+);", RegexOptions.Compiled);
+        private static readonly Regex _unescapeRegex2 = new Regex("&#([0-9]+);", RegexOptions.Compiled);
+		
+        private static string XmlUnescapeString(string input)
 		{
 			string result = input ?? string.Empty;
 
 			// unescape any value-encoded XML entities
-			result = Regex.Replace(result, "&#[Xx]([0-9A-Fa-f]+);", m => ((char) int.Parse(m.Groups[1].Value, NumberStyles.AllowHexSpecifier)).ToString());
-			result = Regex.Replace(result, "&#([0-9]+);", m => ((char) int.Parse(m.Groups[1].Value)).ToString());
-
-			// unescape any entities encoded by SecurityElement.Escape (only <>'"&)
+            result = _unescapeRegex1.Replace(result, m => ((char)int.Parse(m.Groups[1].Value, NumberStyles.AllowHexSpecifier)).ToString());
+            result = _unescapeRegex2.Replace(result, m => ((char)int.Parse(m.Groups[1].Value)).ToString());
+			
+            // unescape any entities encoded by SecurityElement.Escape (only <>'"&)
 			result = result.Replace("&lt;", "<").
 				Replace("&gt;", ">").
 				Replace("&quot;", "\"").

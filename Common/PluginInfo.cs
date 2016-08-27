@@ -29,12 +29,16 @@ using ClearCanvas.Common.Utilities;
 
 namespace ClearCanvas.Common
 {
-    /// <summary>
-    /// Describes a plugin, and provides properties for querying the extension points and extensions defined
-    /// in the plugin.
-    /// </summary>
-    public class PluginInfo : IBrowsable
-    {
+	/// <summary>
+	/// Describes a plugin, and provides properties for querying the extension points and extensions defined
+	/// in the plugin.
+	/// </summary>
+	/// <remarks>
+	/// Instances of this class are immutable and safe for concurrent access by multiple threads.
+	/// </remarks>
+	[Serializable]
+	public sealed class PluginInfo : IBrowsable
+	{
 		/// <summary>
 		/// Internal method used by the framework to discover extension points and extensions declared in a plugin.
 		/// </summary>
@@ -48,7 +52,7 @@ namespace ClearCanvas.Common
 				var epAttr = AttributeUtils.GetAttribute<ExtensionPointAttribute>(type, false);
 				if (epAttr != null)
 				{
-					if(IsValidExtensionPointClass(type))
+					if (IsValidExtensionPointClass(type))
 					{
 						points.Add(new ExtensionPointInfo(type, GetExtensionInterface(type), epAttr.Name, epAttr.Description));
 					}
@@ -69,9 +73,14 @@ namespace ClearCanvas.Common
 					}
 
 					var extensionPointClass = a.ExtensionPointClass;
-					var extensionInterface = GetExtensionInterface(extensionPointClass);
+					if(!IsValidExtensionPointClass(extensionPointClass))
+					{
+						Platform.Log(LogLevel.Error, SR.ExceptionExtensionDoesNotExtendValidExtensionPointClass, type.FullName);
+						continue;
+					}
 
 					// does the extension implement the required interface?
+					var extensionInterface = GetExtensionInterface(extensionPointClass);
 					if (!extensionInterface.IsAssignableFrom(type))
 					{
 						Platform.Log(LogLevel.Error, SR.ExceptionExtensionDoesNotImplementRequiredInterface,
@@ -94,102 +103,119 @@ namespace ClearCanvas.Common
 			}
 		}
 
-    	private static Type GetExtensionInterface(Type extensionClass)
-    	{
-    		return extensionClass.BaseType.GetGenericArguments()[0];
-    	}
+		private static Type GetExtensionInterface(Type extensionPointClass)
+		{
+			if (!IsValidExtensionPointClass(extensionPointClass))
+				throw new ArgumentException(string.Format("{0} does not appear to be a valid extension point class.", extensionPointClass.FullName));
 
-    	private static bool IsValidExtensionPointClass(Type extensionPointClass)
-        {
-            var baseType = extensionPointClass.BaseType;
-    		return baseType.IsGenericType && baseType.GetGenericTypeDefinition().Equals(typeof (ExtensionPoint<>));
-        }
-		
+			return extensionPointClass.BaseType.GetGenericArguments()[0];
+		}
+
+		private static bool IsValidExtensionPointClass(Type extensionPointClass)
+		{
+			var baseType = extensionPointClass.BaseType;
+			return baseType != null && baseType.IsGenericType && baseType.GetGenericTypeDefinition() == typeof(ExtensionPoint<>);
+		}
+
 		private static bool IsConcreteClass(Type type)
 		{
 			return !type.IsAbstract && type.IsClass;
 		}
 
-        
-        private readonly string _name;
-        private readonly string _description;
+
+		private readonly string _name;
+		private readonly string _description;
 		private readonly string _icon;
-		private readonly Assembly _assembly;
+		private readonly AssemblyRef _assembly;
 
-        private readonly List<ExtensionPointInfo> _extensionPoints = new List<ExtensionPointInfo>();
-        private readonly List<ExtensionInfo> _extensions = new List<ExtensionInfo>();
+		private readonly List<ExtensionPointInfo> _extensionPoints;
+		private readonly List<ExtensionInfo> _extensions;
 
-        /// <summary>
-        /// Internal constructor.
-        /// </summary>
-        internal PluginInfo(Assembly assembly, string name, string description, string icon)
-        {
-            _name = name;
-            _description = description;
-            _assembly = assembly;
-        	_icon = icon;
+		/// <summary>
+		/// Internal constructor.
+		/// </summary>
+		internal PluginInfo(Assembly assembly, string name, string description, string icon)
+			: this(assembly, name, description, icon, new List<ExtensionPointInfo>(), new List<ExtensionInfo>())
+		{
+			DiscoverExtensionPointsAndExtensions(assembly, _extensionPoints, _extensions);
+		}
 
-        	DiscoverExtensionPointsAndExtensions(assembly, _extensionPoints, _extensions);
-        }
+		/// <summary>
+		/// Private constructor.
+		/// </summary>
+		private PluginInfo(Assembly assembly, string name, string description, string icon, List<ExtensionPointInfo> extensionPoints, List<ExtensionInfo> extensions)
+		{
+			_name = name;
+			_description = description;
+			_assembly = assembly;
+			_icon = icon;
+			_extensionPoints = extensionPoints;
+			_extensions = extensions;
+		}
 
-        /// <summary>
-        /// Gets the set of extensions defined in this plugin, including disabled extensions.
-        /// </summary>
-        public IList<ExtensionInfo> Extensions
-        {
-            get { return _extensions.AsReadOnly(); }
-        }
+		/// <summary>
+		/// Gets the set of extensions defined in this plugin, including disabled and unlicensed extensions.
+		/// </summary>
+		public IList<ExtensionInfo> Extensions
+		{
+			get { return _extensions.AsReadOnly(); }
+		}
 
-        /// <summary>
-        /// Gets the set of extension points defined in this plugin.
-        /// </summary>
-        public IList<ExtensionPointInfo> ExtensionPoints
-        {
-            get { return _extensionPoints.AsReadOnly(); }
-        }
+		/// <summary>
+		/// Gets the set of extension points defined in this plugin.
+		/// </summary>
+		public IList<ExtensionPointInfo> ExtensionPoints
+		{
+			get { return _extensionPoints.AsReadOnly(); }
+		}
 
-        /// <summary>
-        /// Gets the assembly that implements this plugin.
-        /// </summary>
-        public Assembly Assembly
-        {
-            get { return _assembly; }
-        }
+		/// <summary>
+		/// Gets the assembly that implements this plugin.
+		/// </summary>
+		public AssemblyRef Assembly
+		{
+			get { return _assembly; }
+		}
 
-        /// <summary>
-        /// The name of an icon resource to associate with the plugin.
-        /// </summary>
-        public string Icon
-        {
-            get { return _icon; }
-        }
+		/// <summary>
+		/// Gets the name of an icon resource to associate with the plugin.
+		/// </summary>
+		public string Icon
+		{
+			get { return _icon; }
+		}
 
-        #region IBrowsable Members
+		public override string ToString()
+		{
+			return string.Format("{0} ({1})", _name ?? _assembly.Name, _assembly.Resolve().Location);
+		}
 
-    	/// <summary>
-    	/// Formal name of this object, typically the type name or assembly name.  Cannot be null.
-    	/// </summary>
-    	public string FormalName
-        {
-            get { return Assembly.FullName; }
-        }
+		#region IBrowsable Members
 
-    	/// <summary>
-    	/// Friendly name of the object, if one exists, otherwise null.
-    	/// </summary>
-    	public string Name
-        {
-            get { return _name; }
-        }
+		/// <summary>
+		/// Formal name of this object, typically the type name or assembly name.  Cannot be null.
+		/// </summary>
+		public string FormalName
+		{
+			get { return Assembly.Resolve().FullName; }
+		}
 
-    	/// <summary>
-    	/// A friendly description of this object, if one exists, otherwise null.
-    	/// </summary>
-    	public string Description
-        {
-            get { return _description; }
-        }
+		/// <summary>
+		/// Friendly name of the object, if one exists, otherwise null.
+		/// </summary>
+		public string Name
+		{
+			get { return _name; }
+		}
 
-        #endregion
-    }
+		/// <summary>
+		/// A friendly description of this object, if one exists, otherwise null.
+		/// </summary>
+		public string Description
+		{
+			get { return _description; }
+		}
+
+		#endregion
+	}
 }

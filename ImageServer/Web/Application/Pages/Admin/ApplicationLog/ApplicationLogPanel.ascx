@@ -48,14 +48,14 @@
 							
 							</script>
 
-						<table cellpadding="0" cellspacing="0" border="0">
+						<table>
 							<tr>
 								<td>
-									<table cellpadding="0" cellspacing="0" border="0">
+									<table>
 										<tr>
 											<td align="left" valign="bottom">
 												<asp:Label ID="Label2" runat="server" Text="<%$Resources: SearchFieldLabels,AppLogHost%>" CssClass="SearchTextBoxLabel"></asp:Label><br />
-												<asp:TextBox ID="HostFilter" runat="server" CssClass="SearchTextBox" ToolTip="<%$Resources: Tooltips,SearchByHostname %>"></asp:TextBox></td>
+												<ccUI:TextBox ID="HostFilter" runat="server" CssClass="SearchTextBox" ToolTip="<%$Resources: Tooltips,SearchByHostname %>"></ccUI:TextBox></td>
 
                                             <td align="left" valign="bottom">
                                                 <asp:Label ID="Label7" runat="server" Text="<%$Resources: SearchFieldLabels,AppLogFromDate%>" CssClass="SearchTextBoxLabel" EnableViewState="false"/>
@@ -64,7 +64,7 @@
 
                                             </td>
                                             <td align="left" valign="bottom">
-                                                <table cellspacing="0" cellpadding="0" border="0"><tr><td valign="bottom"><asp:Label ID="Label5" runat="server" Text="<%$Resources: SearchFieldLabels,AppLogFromTime%>" CssClass="SearchTextBoxLabel" EnableViewState="false"/></td><td style="padding-left: 5px;"><ccAsp:InvalidInputIndicator ID="FromTimeHelp" runat="server" SkinID="InvalidInputIndicator" /></td></tr></table>
+                                                <table border="0"><tr><td valign="bottom"><asp:Label ID="Label5" runat="server" Text="<%$Resources: SearchFieldLabels,AppLogFromTime%>" CssClass="SearchTextBoxLabel" EnableViewState="false"/></td><td style="padding-left: 5px;"><ccAsp:InvalidInputIndicator ID="FromTimeHelp" runat="server" SkinID="InvalidInputIndicator" /></td></tr></table>
 												<asp:TextBox ID="FromTimeFilter" runat="server" CssClass="SearchTextBox" ToolTip="From Time (HH:MM:SS.FFF)" ValidationGroup="AppLogValidationGroup"></asp:TextBox>
                                                 <ccValidator:RegularExpressionFieldValidator
                                                         ID="FromTimeValidator" runat="server" ControlToValidate="FromTimeFilter" InvalidInputIndicatorID="FromTimeHelp"
@@ -88,7 +88,7 @@
                                             </td>                                            
 											<td align="left" valign="bottom">
 												<asp:Label ID="Label3" runat="server" Text="<%$Resources: SearchFieldLabels,AppLogThread%>" CssClass="SearchTextBoxLabel"></asp:Label><br />
-												<asp:TextBox ID="ThreadFilter" runat="server" CssClass="SearchTextBox" ToolTip="<%$Resources: Tooltips,SearchByThread %>"></asp:TextBox></td>
+												<ccUI:TextBox ID="ThreadFilter" runat="server" CssClass="SearchTextBox" ToolTip="<%$Resources: Tooltips,SearchByThread %>"></ccUI:TextBox></td>
 											<td align="left" valign="bottom">
 												<asp:Label ID="Label6" runat="server" Text="<%$Resources: SearchFieldLabels,AppLogLogLevel%>" CssClass="SearchTextBoxLabel"
 													EnableViewState="False" /><br />
@@ -101,7 +101,7 @@
 											</td>
 											<td align="left" valign="bottom">
 												<asp:Label ID="Label1" runat="server" Text="<%$Resources:SearchFieldLabels,AppLogLogMessages %>" CssClass="SearchTextBoxLabel"></asp:Label><br />
-												<asp:TextBox ID="MessageFilter" runat="server" CssClass="SearchTextBox" ToolTip="<%$Resources: Tooltips,SearchByLogContent %>"></asp:TextBox></td>
+												<ccUI:TextBox ID="MessageFilter" runat="server" CssClass="SearchTextBox" ToolTip="<%$Resources: Tooltips,SearchByLogContent %>"></ccUI:TextBox></td>
 											<td valign="bottom">
 												<asp:Panel ID="Panel1" runat="server" CssClass="SearchButtonPanel">
 													<ccUI:ToolbarButton ID="SearchButton" runat="server" SkinID="<%$Image:SearchIcon%>" OnClick="SearchButton_Click" CausesValidation="true" ValidationGroup="AppLogValidationGroup" /></asp:Panel>
@@ -116,30 +116,18 @@
 			</asp:TableRow>
 			<asp:TableRow Height="100%">
 				<asp:TableCell>
-					<table width="100%" cellpadding="0" cellspacing="0" >
-<!--
+					<table width="100%" class="ToolbarButtonPanel">
 						<tr>
 							<td>
-								<asp:UpdatePanel ID="ToolBarUpdatePanel" runat="server" UpdateMode="Conditional">
-									<ContentTemplate>
-										<asp:Panel ID="ToolbarButtons" runat="server" CssClass="ToolbarButtons">
-										</asp:Panel>
-									</ContentTemplate>
-								</asp:UpdatePanel>
-							</td>
-						</tr>
--->						
-						<tr>
-							<td>
-								<asp:Panel ID="Panel2" runat="server" >
-									<table width="100%" cellpadding="0" cellspacing="0">
+								<asp:Panel ID="Panel2" runat="server" CssClass="SearchPanelResultContainer">
+									<table class="SearchPanelResultContainerTable">
 										<tr>
-											<td style="border-bottom: solid 1px #66aa65">
+											<td>
 												<ccAsp:GridPager ID="GridPagerTop" runat="server" />
 											</td>
 										</tr>
 										<tr>
-											<td style="background-color: white;">
+											<td class="SearchPanelResultContainerTd">
 												<localAsp:ApplicationLogGridView ID="ApplicationLogGridView" runat="server"/>
 											</td>
 										</tr>

@@ -153,8 +153,8 @@ namespace ClearCanvas.Ris.Client.Workflow
 			false,
 			SR.TitleCreateReport,
 			SR.TitleEditReport,
-			new IconSet(IconScheme.Colour, "Icons.CreateReportSmall.png", "Icons.CreateReportMedium.png", "Icons.CreateReportMedium.png"),
-			new IconSet(IconScheme.Colour, "Icons.EditReportToolSmall.png", "Icons.EditReportToolMedium.png", "Icons.EditReportToolLarge.png"))
+			new IconSet("Icons.CreateReportSmall.png", "Icons.CreateReportMedium.png", "Icons.CreateReportMedium.png"),
+			new IconSet("Icons.EditReportToolSmall.png", "Icons.EditReportToolMedium.png", "Icons.EditReportToolLarge.png"))
 		{
 		}
 	}
@@ -172,8 +172,8 @@ namespace ClearCanvas.Ris.Client.Workflow
 			true,
 			SR.TitleCreateReportWithImages,
 			SR.TitleEditReportWithImages,
-			new IconSet(IconScheme.Colour, "Icons.CreateReportWithImagesSmall.png", "Icons.CreateReportWithImagesMedium.png", "Icons.CreateReportWithImagesMedium.png"),
-			new IconSet(IconScheme.Colour, "Icons.EditReportWithImagesToolSmall.png", "Icons.EditReportWithImagesToolMedium.png", "Icons.EditReportWithImagesToolLarge.png"))
+			new IconSet("Icons.CreateReportWithImagesSmall.png", "Icons.CreateReportWithImagesMedium.png", "Icons.CreateReportWithImagesMedium.png"),
+			new IconSet("Icons.EditReportWithImagesToolSmall.png", "Icons.EditReportWithImagesToolMedium.png", "Icons.EditReportWithImagesToolLarge.png"))
 		{
 		}
 	}
@@ -197,23 +197,23 @@ namespace ClearCanvas.Ris.Client.Workflow
 	[LabelValueObserver("group", "GroupLabel", "LabelChanged")]
 	[TooltipValueObserver("group", "GroupLabel", "LabelChanged")]
 
-	[MenuAction("withImagesContext", "folderexplorer-items-contextmenu/Edit Report and Open Images", "ApplyWithImages")]
+	[MenuAction("withImagesContext", "folderexplorer-items-contextmenu/MenuEditReportAndOpenImages", "ApplyWithImages")]
 	[EnabledStateObserver("withImagesContext", "Enabled", "EnabledChanged")]
 	[IconSetObserver("withImagesContext", "WithImagesIconSet", "LabelChanged")]
 	[LabelValueObserver("withImagesContext", "WithImagesLabel", "LabelChanged")]
 
-	[ButtonAction("withImagesToolbar", "editreport-toolbar-dropdown/Edit Report and Open Images", "ApplyWithImagesAndSetDefault")]
+	[ButtonAction("withImagesToolbar", "editreport-toolbar-dropdown/MenuEditReportAndOpenImages", "ApplyWithImagesAndSetDefault")]
 	[EnabledStateObserver("withImagesToolbar", "Enabled", "EnabledChanged")]
 	[IconSetObserver("withImagesToolbar", "WithImagesIconSet", "LabelChanged")]
 	[LabelValueObserver("withImagesToolbar", "WithImagesLabel", "LabelChanged")]
 	[CheckedStateObserver("withImagesToolbar", "WithImagesChecked", "ActiveToolChanged")]
 
-	[MenuAction("withoutImagesContext", "folderexplorer-items-contextmenu/Edit Report", "ApplyWithoutImages")]
+	[MenuAction("withoutImagesContext", "folderexplorer-items-contextmenu/MenuEditReport", "ApplyWithoutImages")]
 	[EnabledStateObserver("withoutImagesContext", "Enabled", "EnabledChanged")]
 	[IconSetObserver("withoutImagesContext", "WithoutImagesIconSet", "LabelChanged")]
 	[LabelValueObserver("withoutImagesContext", "WithoutImagesLabel", "LabelChanged")]
 
-	[ButtonAction("withoutImagesToolbar", "editreport-toolbar-dropdown/Edit Report", "ApplyWithoutImagesAndSetDefault")]
+	[ButtonAction("withoutImagesToolbar", "editreport-toolbar-dropdown/MenuEditReport", "ApplyWithoutImagesAndSetDefault")]
 	[EnabledStateObserver("withoutImagesToolbar", "Enabled", "EnabledChanged")]
 	[IconSetObserver("withoutImagesToolbar", "WithoutImagesIconSet", "LabelChanged")]
 	[LabelValueObserver("withoutImagesToolbar", "WithoutImagesLabel", "LabelChanged")]

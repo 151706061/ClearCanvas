@@ -32,12 +32,12 @@ using ClearCanvas.Dicom.Utilities.Command;
 using ClearCanvas.Dicom.Utilities.Xml;
 using ClearCanvas.Enterprise.Core;
 using ClearCanvas.ImageServer.Common;
-using ClearCanvas.ImageServer.Common.Command;
 using ClearCanvas.ImageServer.Common.Utilities;
 using ClearCanvas.ImageServer.Core;
-using ClearCanvas.ImageServer.Core.Command;
+using ClearCanvas.ImageServer.Core.Helpers;
 using ClearCanvas.ImageServer.Core.Validation;
 using ClearCanvas.ImageServer.Enterprise;
+using ClearCanvas.ImageServer.Enterprise.Command;
 using ClearCanvas.ImageServer.Model;
 using ClearCanvas.ImageServer.Model.Brokers;
 using ClearCanvas.ImageServer.Model.EntityBrokers;
@@ -246,7 +246,8 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.TierMigrate
                                                		Destination = newFilesystem
                                                	};
 
-            	string origFolder = context.OriginalStudyLocation.GetStudyPath();
+				// The multiple CreateDirectoryCommands are done so that rollback of the directories being created happens properly if either of the directories already exist.
+				var origFolder = context.OriginalStudyLocation.GetStudyPath();
                 processor.AddCommand(new CreateDirectoryCommand(newPath));
 
                 newPath = Path.Combine(newPath, context.OriginalStudyLocation.StudyFolder);
@@ -255,7 +256,7 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue.TierMigrate
                 newPath = Path.Combine(newPath, context.OriginalStudyLocation.StudyInstanceUid);
                 // don't create this directory so that it won't be backed up by MoveDirectoryCommand
 
-                CopyDirectoryCommand copyDirCommand = new CopyDirectoryCommand(origFolder, newPath, 
+				var copyDirCommand = new CopyDirectoryCommand(origFolder, newPath, 
                     delegate (string path)
                         {
                             // Update the progress. This is useful if the migration takes long time to complete.

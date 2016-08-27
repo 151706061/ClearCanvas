@@ -24,12 +24,10 @@
 
 using System;
 using System.Security.Permissions;
-using ClearCanvas.ImageServer.Enterprise;
-using ClearCanvas.ImageServer.Enterprise.Authentication;
+using ClearCanvas.ImageServer.Common.Authentication;
 using ClearCanvas.ImageServer.Model;
 using Resources;
 using ClearCanvas.ImageServer.Web.Application.Pages.Common;
-using ClearCanvas.ImageServer.Web.Common.Data;
 using ClearCanvas.ImageServer.Web.Common.Data.DataSource;
 
 namespace ClearCanvas.ImageServer.Web.Application.Pages.Queues.StudyIntegrityQueue
@@ -41,34 +39,7 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Queues.StudyIntegrityQue
         {
             base.OnInit(e);
 
-            ServerPartition activePartition = null;
-
-            if (!IsPostBack && !Page.IsAsync)
-            {
-                string patientID = Request["PatientID"];
-                string patientName = Request["PatientName"];
-                string partitionKey = Request["PartitionKey"];
-                string reason = Request["Reason"];
-
-                if (!string.IsNullOrEmpty(patientID) && !string.IsNullOrEmpty(patientName) &&
-                    !string.IsNullOrEmpty(partitionKey))
-                {
-                    if (!string.IsNullOrEmpty(partitionKey))
-                    {
-                        var controller = new ServerPartitionConfigController();
-                        activePartition = controller.GetPartition(new ServerEntityKey("ServerPartition", partitionKey));
-                    }
-                }
-                if (string.IsNullOrEmpty(reason))
-                {
-                    if (!string.IsNullOrEmpty(partitionKey))
-                    {
-                        var controller = new ServerPartitionConfigController();
-                        activePartition = controller.GetPartition(new ServerEntityKey("ServerPartition", partitionKey));
-                    }
-                }
-            }
-
+			ServerPartitionSelector.UseNonResearchPartitions = true;
             ServerPartitionSelector.PartitionChanged += delegate(ServerPartition partition)
             {
                 SearchPanel.ServerPartition = partition;
@@ -76,11 +47,6 @@ namespace ClearCanvas.ImageServer.Web.Application.Pages.Queues.StudyIntegrityQue
             };
 
             ServerPartitionSelector.SetUpdatePanel(PageContent);
-
-            if (activePartition != null)
-            {
-                ServerPartitionSelector.SelectedPartition = activePartition;
-            }
 
             SetPageTitle(Titles.StudyIntegrityQueuePageTitle);
         }

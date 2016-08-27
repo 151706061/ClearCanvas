@@ -26,6 +26,7 @@ using ClearCanvas.Common;
 using ClearCanvas.Common.Utilities;
 using ClearCanvas.Desktop;
 using ClearCanvas.Desktop.Actions;
+using ClearCanvas.Enterprise.Common;
 using ClearCanvas.Ris.Application.Common;
 using ClearCanvas.Ris.Application.Common.ModalityWorkflow;
 using ClearCanvas.Ris.Application.Common.RegistrationWorkflow;
@@ -34,9 +35,9 @@ using ClearCanvas.Ris.Client.Formatting;
 
 namespace ClearCanvas.Ris.Client.Workflow
 {
-	[MenuAction("apply", "folderexplorer-items-contextmenu/Undo Merge Orders", "Apply")]
-	[Tooltip("apply", "Undo Merge Orders")]
-	[IconSet("apply", IconScheme.Colour, "UnmergeOrdersSmall.png", "UnmergeOrdersMedium.png", "UnmergeOrdersLarge.png")]
+	[MenuAction("apply", "folderexplorer-items-contextmenu/MenuUndoMergeOrders", "Apply")]
+	[Tooltip("apply", "TooltipUndoMergeOrders")]
+	[IconSet("apply", "UnmergeOrdersSmall.png", "UnmergeOrdersMedium.png", "UnmergeOrdersLarge.png")]
 	[EnabledStateObserver("apply", "Enabled", "EnabledChanged")]
 	[ActionPermission("apply", Application.Common.AuthorityTokens.Workflow.Order.Unmerge)]
 	public abstract class UnmergeOrdersToolBase<TItem, TContext> : WorkflowItemTool<TItem, TContext>
@@ -83,7 +84,7 @@ namespace ClearCanvas.Ris.Client.Workflow
 				var exitCode = ApplicationComponent.LaunchAsDialog(
 					this.Context.DesktopWindow,
 					unmergeComponent,
-					string.Format("Undo merge order {0}", AccessionFormat.Format(item.AccessionNumber)));
+					string.Format(SR.MessageUndoMergeOrder, AccessionFormat.Format(item.AccessionNumber)));
 
 				if (exitCode != ApplicationComponentExitCode.Accepted)
 					return false;
@@ -93,7 +94,7 @@ namespace ClearCanvas.Ris.Client.Workflow
 			else
 			{
 				// confirm
-				var message = string.Format("Un-merge all orders merged into {0}?", item.AccessionNumber);
+				var message = string.Format(SR.MessageUnmergeOrderConfirmation, item.AccessionNumber);
 				if (DialogBoxAction.No == this.Context.DesktopWindow.ShowMessageBox(message, MessageBoxActions.YesNo))
 					return false;
 				reason = new EnumValueInfo(reasonCode, null, null);
@@ -111,7 +112,7 @@ namespace ClearCanvas.Ris.Client.Workflow
 		}
 	}
 
-	[ExtensionOf(typeof(RegistrationWorkflowItemToolExtensionPoint))]
+	// [ExtensionOf(typeof(RegistrationWorkflowItemToolExtensionPoint))] // Disabled due to bug #12488
 	public class RegistrationUnmergeOrdersTool : UnmergeOrdersToolBase<RegistrationWorklistItemSummary, IRegistrationWorkflowItemToolContext>
 	{
 		protected override bool Execute(RegistrationWorklistItemSummary item)
@@ -126,7 +127,7 @@ namespace ClearCanvas.Ris.Client.Workflow
 		}
 	}
 
-	[ExtensionOf(typeof(PerformingWorkflowItemToolExtensionPoint))]
+	// [ExtensionOf(typeof(PerformingWorkflowItemToolExtensionPoint))] // Disabled due to bug #12488
 	public class PerformingUnmergeOrdersTool : UnmergeOrdersToolBase<ModalityWorklistItemSummary, IPerformingWorkflowItemToolContext>
 	{
 		protected override bool Execute(ModalityWorklistItemSummary item)

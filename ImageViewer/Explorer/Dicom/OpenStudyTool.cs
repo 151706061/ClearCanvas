@@ -89,42 +89,7 @@ namespace ClearCanvas.ImageViewer.Explorer.Dicom
 					return;
 				}
 
-				if (Context.SelectedServers.Count == 1 && Context.SelectedServers[0].IsLocal)
-				{
-					// #10746:  Workstation: the user must be warned when opening studies that are being processed
-					// This implementation does not cover all the possible cases of when a study might be modified.
-					// For example: if a study is being retrieved, WQI failed and deleted, the study is technically
-					// not complete and user should be warned.  The risk of such cases are mitigated by the fact the
-					// user is warned about the failed WQI.  This implementation is only meant to warn user if the
-					// study is "being" or "about to" be modified before opening the study.
-					try
-					{
-						Platform.Log(LogLevel.Debug, "Querying for a StudyUpdate work items that are in progress for the studies that are being opened.");
-
-						var anyStudyBeingModified = Context.SelectedStudies.Any(study =>
-						{
-							var request = new WorkItemQueryRequest { StudyInstanceUid = study.StudyInstanceUid };
-							IEnumerable<WorkItemData> workItems = null;
-
-							Platform.GetService<IWorkItemService>(s => workItems = s.Query(request).Items);
-							return workItems.Any(IsNonTerminalStudyUpdateItem);
-						});
-
-						if (anyStudyBeingModified)
-						{
-							var message = Context.SelectedStudies.Count == 1 ? SR.MessageStudyIsBeingModified : SR.MessageStudiesAreBeingModified;
-
-							if (DialogBoxAction.No == Context.DesktopWindow.ShowMessageBox(message, MessageBoxActions.YesNo))
-								return;
-						}
-					}
-					catch (Exception e)
-					{
-						Platform.Log(LogLevel.Debug, e);
-					}
-				}
-
-				var helper = new OpenStudyHelper
+                var helper = new OpenStudyHelper
 				                 {
 				                     WindowBehaviour = ViewerLaunchSettings.WindowBehaviour,
 				                     AllowEmptyViewer = ViewerLaunchSettings.AllowEmptyViewer
@@ -177,22 +142,6 @@ namespace ClearCanvas.ImageViewer.Explorer.Dicom
 		private IEnumerable<IPatientData> GetSelectedPatients()
 		{
 		    return Context.SelectedStudies.Cast<IPatientData>();
-		}
-
-		private static bool IsNonTerminalStudyUpdateItem(WorkItemData item)
-		{
-			if (item.Request.ConcurrencyType != WorkItemConcurrency.StudyUpdate)
-				return false;
-
-			switch (item.Status)
-			{
-				case WorkItemStatusEnum.Pending:
-				case WorkItemStatusEnum.InProgress:
-				case WorkItemStatusEnum.Idle:
-					return true;
-				default:
-					return false;
-			}
 		}
 	}
 }

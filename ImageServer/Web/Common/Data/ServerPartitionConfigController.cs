@@ -51,11 +51,12 @@ namespace ClearCanvas.ImageServer.Web.Common.Data
         /// Add a partition in the database.
         /// </summary>
         /// <param name="partition"></param>
-        public bool AddPartition(ServerPartition partition, List<string> groupsWithAccess)
+        /// <param name="groupsWithDataAccess"></param>
+        public bool AddPartition(ServerPartition partition, List<string> groupsWithDataAccess)
         {
             Platform.Log(LogLevel.Info, "Adding new server partition : AETitle = {0}", partition.AeTitle);
 
-            bool result = _serverAdapter.AddServerPartition(partition, groupsWithAccess);
+            bool result = _serverAdapter.AddServerPartition(partition, groupsWithDataAccess);
 
             if (result)
                 Platform.Log(LogLevel.Info, "Server Partition added : AETitle = {0}", partition.AeTitle);
@@ -70,12 +71,13 @@ namespace ClearCanvas.ImageServer.Web.Common.Data
         /// 
         /// </summary>
         /// <param name="partition"></param>
+        /// <param name="groupsWithDataAccess"></param>
         /// <returns></returns>
-        public bool UpdatePartition(ServerPartition partition, List<string> groupsWithAccess)
+        public bool UpdatePartition(ServerPartition partition, List<string> groupsWithDataAccess)
         {
             Platform.Log(LogLevel.Info, "Updating server partition: AETitle = {0}", partition.AeTitle);
 
-            bool result = _serverAdapter.Update(partition, groupsWithAccess);
+            bool result = _serverAdapter.Update(partition, groupsWithDataAccess);
 
             if (result)
                 Platform.Log(LogLevel.Info, "Server Partition updated : AETitle = {0}", partition.AeTitle);
@@ -111,7 +113,7 @@ namespace ClearCanvas.ImageServer.Web.Common.Data
         /// <returns></returns>
         public IList<ServerPartition> GetAllPartitions()
         {
-        	ServerPartitionSelectCriteria searchCriteria = new ServerPartitionSelectCriteria();
+        	var searchCriteria = new ServerPartitionSelectCriteria();
         	searchCriteria.AeTitle.SortAsc(0);
 			return GetPartitions(searchCriteria);
         }
@@ -123,9 +125,18 @@ namespace ClearCanvas.ImageServer.Web.Common.Data
         /// <returns></returns>
         public bool CanDelete(ServerPartition partition)
         {
-            return partition.StudyCount <= 0;
+            return partition.StudyCount <= 0 && !partition.ServerPartitionTypeEnum.Equals(ServerPartitionTypeEnum.VFS);
         }
 
+		/// <summary>
+		/// Checks if a specified partition can be edited
+		/// </summary>
+		/// <param name="partition"></param>
+		/// <returns></returns>
+		public bool CanEdit(ServerPartition partition)
+		{
+			return !partition.ServerPartitionTypeEnum.Equals(ServerPartitionTypeEnum.VFS);
+		}
 
         /// <summary>
         /// Delete the specified partition
@@ -141,10 +152,12 @@ namespace ClearCanvas.ImageServer.Web.Common.Data
             {
                 using (IUpdateContext ctx = PersistentStoreRegistry.GetDefaultStore().OpenUpdateContext(UpdateContextSyncMode.Flush))
                 {
-                    IDeleteServerPartition broker = ctx.GetBroker<IDeleteServerPartition>();
-                    ServerPartitionDeleteParameters parms = new ServerPartitionDeleteParameters();
-                    parms.ServerPartitionKey = partition.Key;
-                    if (!broker.Execute(parms))
+                    var broker = ctx.GetBroker<IDeleteServerPartition>();
+                    var parms = new ServerPartitionDeleteParameters
+	                    {
+		                    ServerPartitionKey = partition.Key
+	                    };
+	                if (!broker.Execute(parms))
                         throw new Exception("Unable to delete server partition from database");
                     ctx.Commit();
                 }

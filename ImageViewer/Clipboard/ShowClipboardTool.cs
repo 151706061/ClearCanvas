@@ -23,30 +23,26 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
+using System.ComponentModel;
 using ClearCanvas.Common;
 using ClearCanvas.Desktop;
 using ClearCanvas.Desktop.Actions;
-using ClearCanvas.ImageViewer.BaseTools;
 using ClearCanvas.Desktop.Tools;
-using System.Collections;
-using ClearCanvas.Common.Utilities;
+using ClearCanvas.ImageViewer.BaseTools;
 
 #pragma warning disable 0419,1574,1587,1591
 
 namespace ClearCanvas.ImageViewer.Clipboard
 {
 	[ExtensionPoint]
-	public sealed class ClipboardToolbarToolExtensionPoint : ExtensionPoint<ITool>
-	{
-	}
+	public sealed class ClipboardToolbarToolExtensionPoint : ExtensionPoint<ITool> {}
 
 	[MenuAction("show", "global-menus/MenuView/MenuShowClipboard", "Show")]
 	[DropDownButtonAction("show", "global-toolbars/ToolbarStandard/ToolbarShowClipboard", "Show", "ClipboardMenuModel")]
 	[Tooltip("show", "TooltipShowClipboard")]
 	[IconSet("show", "Icons.ShowClipboardToolSmall.png", "Icons.ShowClipboardToolMedium.png", "Icons.ShowClipboardToolLarge.png")]
-
-	[ExtensionOf(typeof(ImageViewerToolExtensionPoint))]
+	//
+	[ExtensionOf(typeof (ImageViewerToolExtensionPoint))]
 	public class ShowClipboardTool : ImageViewerTool
 	{
 		private class ToolContextProxy : IImageViewerToolContext
@@ -54,7 +50,7 @@ namespace ClearCanvas.ImageViewer.Clipboard
 			private readonly IImageViewerToolContext _realContext;
 
 			public ToolContextProxy(IImageViewerToolContext realContext)
-			{ 
+			{
 				_realContext = realContext;
 			}
 
@@ -70,11 +66,20 @@ namespace ClearCanvas.ImageViewer.Clipboard
 				get { return _realContext.DesktopWindow; }
 			}
 
+			public event CancelEventHandler ViewerClosing
+			{
+				add { _realContext.ViewerClosing += value; }
+				remove { _realContext.ViewerClosing -= value; }
+			}
+
 			#endregion
 		}
 
 		public const string ClipboardToolbarDropdownSite = "clipboard-toolbar-dropdown";
+
+		[ThreadStatic]
 		private static IShelf _shelf;
+
 		private ToolSet _toolSet;
 
 		/// <summary>
@@ -83,9 +88,7 @@ namespace ClearCanvas.ImageViewer.Clipboard
 		/// <remarks>
 		/// A no-args constructor is required by the framework.  Do not remove.
 		/// </remarks>
-		public ShowClipboardTool()
-		{
-		}
+		public ShowClipboardTool() {}
 
 		public override void Initialize()
 		{
@@ -95,17 +98,16 @@ namespace ClearCanvas.ImageViewer.Clipboard
 
 			try
 			{
-
 				tools = new ClipboardToolbarToolExtensionPoint().CreateExtensions();
 			}
-			catch(NotSupportedException)
+			catch (NotSupportedException)
 			{
 				tools = new object[0];
 				Platform.Log(LogLevel.Debug, "No clipboard toolbar drop-down items found.");
 			}
 			catch (Exception e)
 			{
-				tools = new object[0]; 
+				tools = new object[0];
 				Platform.Log(LogLevel.Debug, "Failed to create clipboard toolbar drop-down items.", e);
 			}
 
@@ -120,17 +122,14 @@ namespace ClearCanvas.ImageViewer.Clipboard
 
 		public ActionModelNode ClipboardMenuModel
 		{
-			get
-			{
-				return ActionModelRoot.CreateModel(typeof(ShowClipboardTool).FullName, ClipboardToolbarDropdownSite, _toolSet.Actions);
-			}	
+			get { return ActionModelRoot.CreateModel(typeof (ShowClipboardTool).FullName, ClipboardToolbarDropdownSite, _toolSet.Actions); }
 		}
 
 		public void Show()
 		{
 			if (_shelf == null)
 			{
-				ClipboardComponent clipboardComponent = new ClipboardComponent();
+				ClipboardComponent clipboardComponent = new ClipboardComponent(Clipboard.ClipboardSiteToolbar, Clipboard.ClipboardSiteMenu, Clipboard.Default, false);
 
 				_shelf = ApplicationComponent.LaunchAsShelf(
 					this.Context.DesktopWindow,

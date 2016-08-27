@@ -38,7 +38,7 @@ namespace ClearCanvas.Ris.Client.Admin
 {
 	//JR: don't really need this because you can access validation from the live component directly
     //[MenuAction("launch", "global-menus/Admin/UI Validation", "Launch")]
-	[ActionPermission("launch", ClearCanvas.Ris.Client.AuthorityTokens.Desktop.UIValidationRules)]
+	[ActionPermission("launch", ClearCanvas.Ris.Application.Common.AuthorityTokens.Desktop.UIValidationRules)]
 	[ExtensionOf(typeof(DesktopToolExtensionPoint), FeatureToken = FeatureTokens.RIS.Core)]
     public class ValidationManagementTool : Tool<IDesktopToolContext>
     {
@@ -55,7 +55,7 @@ namespace ClearCanvas.Ris.Client.Admin
                     _workspace = ApplicationComponent.LaunchAsWorkspace(
                         this.Context.DesktopWindow,
                         component,
-                        "UI Validation Management");
+                        SR.TitleUiValidationManagement);
                     _workspace.Closed += delegate { _workspace = null; };
 
                 }
@@ -96,9 +96,9 @@ namespace ClearCanvas.Ris.Client.Admin
         public ValidationManagementComponent()
         {
             _applicationComponents = new Table<Type>();
-            _applicationComponents.Columns.Add(new TableColumn<Type, string>("Component",
+            _applicationComponents.Columns.Add(new TableColumn<Type, string>(SR.ColumnComponent,
                 delegate(Type t) { return t.Name; }));
-            _applicationComponents.Columns.Add(new TableColumn<Type, string>("Namespace",
+            _applicationComponents.Columns.Add(new TableColumn<Type, string>(SR.ColumnNamespace,
                 delegate(Type t) { return t.Namespace; }));
         }
 
@@ -106,7 +106,7 @@ namespace ClearCanvas.Ris.Client.Admin
         {
             foreach (PluginInfo plugin in Platform.PluginManager.Plugins)
             {
-                foreach (Type t in plugin.Assembly.GetExportedTypes())
+                foreach (Type t in plugin.Assembly.Resolve().GetExportedTypes())
                 {
                     try
                     {

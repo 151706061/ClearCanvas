@@ -25,7 +25,6 @@
 using System;
 using System.IO;
 using System.Threading;
-using System.Xml;
 using ClearCanvas.Common;
 using ClearCanvas.Common.Utilities;
 using ClearCanvas.Dicom;
@@ -53,6 +52,12 @@ namespace ClearCanvas.ImageServer.Core.Process
 		private static readonly StudyXmlOutputSettings _outputSettings = ImageServerCommonConfiguration.DefaultStudyXmlOutputSettings;
 		#endregion
 
+		#region Properties
+
+		public long FileSize { get; private set; }
+
+		#endregion
+
 		#region Constructors
 
 		public InsertStudyXmlCommand(DicomFile file, StudyXml stream, StudyStorageLocation storageLocation)
@@ -73,7 +78,7 @@ namespace ClearCanvas.ImageServer.Core.Process
 
 		private static void WriteStudyStream(string streamFile, string gzStreamFile, StudyXml theStream)
 		{
-			XmlDocument doc = theStream.GetMemento(_outputSettings);
+			var theMemento = theStream.GetMemento(_outputSettings);
 
 			// allocate the random number generator here, in case we need it below
 			Random rand = new Random();
@@ -82,24 +87,20 @@ namespace ClearCanvas.ImageServer.Core.Process
 			for (int i = 0; ; i++)
 				try
 				{
-					if (File.Exists(tmpStreamFile))
-						FileUtils.Delete(tmpStreamFile);
-					if (File.Exists(tmpGzStreamFile))
-						FileUtils.Delete(tmpGzStreamFile);
+					FileUtils.Delete(tmpStreamFile);
+					FileUtils.Delete(tmpGzStreamFile);
 
 					using (FileStream xmlStream = FileStreamOpener.OpenForSoleUpdate(tmpStreamFile, FileMode.CreateNew),
 					                  gzipStream = FileStreamOpener.OpenForSoleUpdate(tmpGzStreamFile, FileMode.CreateNew))
 					{
-						StudyXmlIo.WriteXmlAndGzip(doc, xmlStream, gzipStream);
+						StudyXmlIo.WriteXmlAndGzip(theMemento, xmlStream, gzipStream);
 						xmlStream.Close();
 						gzipStream.Close();
 					}
 
-					if (File.Exists(streamFile))
-						FileUtils.Delete(streamFile);
+					FileUtils.Delete(streamFile);
 					File.Move(tmpStreamFile, streamFile);
-					if (File.Exists(gzStreamFile))
-						FileUtils.Delete(gzStreamFile);
+					FileUtils.Delete(gzStreamFile);
 					File.Move(tmpGzStreamFile,gzStreamFile);
 					return;
 				}
@@ -121,16 +122,13 @@ namespace ClearCanvas.ImageServer.Core.Process
 
 		protected override void OnExecute(CommandProcessor theProcessor)
 		{
-			long fileSize = 0;
-			if (File.Exists(_file.Filename))
-			{
-				FileInfo finfo = new FileInfo(_file.Filename);
-
-				fileSize = finfo.Length;
-			}
+			FileSize = 0;
+			var finfo = new FileInfo(_file.Filename);
+			if (finfo.Exists)
+				FileSize = finfo.Length;
 
 			// Setup the insert parameters
-			if (false == _stream.AddFile(_file, fileSize, _outputSettings))
+			if (false == _stream.AddFile(_file, FileSize, _outputSettings))
 			{
 				Platform.Log(LogLevel.Error, "Unexpected error adding SOP to XML Study Descriptor for file {0}",
 				             _file.Filename);

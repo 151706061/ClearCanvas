@@ -25,7 +25,6 @@
 using System;
 using System.IO;
 using System.Threading;
-using System.Xml;
 using ClearCanvas.Common;
 using ClearCanvas.Common.Utilities;
 using ClearCanvas.Dicom;
@@ -51,9 +50,15 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue
 		private static readonly StudyXmlOutputSettings _outputSettings = ImageServerCommonConfiguration.DefaultStudyXmlOutputSettings;
 		#endregion
 
-        #region Constructors
+		#region Properties
 
-        public UpdateStudyXmlCommand(DicomFile file, StudyXml stream, StudyStorageLocation storageLocation)
+		public long FileSize { get; private set; }
+
+		#endregion
+
+		#region Constructors
+
+		public UpdateStudyXmlCommand(DicomFile file, StudyXml stream, StudyStorageLocation storageLocation)
             : base("Update Study XML", true)
         {
             Platform.CheckForNullReference(file, "Dicom File object");
@@ -72,13 +77,11 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue
             // Setup the insert parameters
         	string seriesInstanceUid = _file.DataSet[DicomTags.SeriesInstanceUid].GetString(0, string.Empty);
         	string sopinstanceUid = _file.MediaStorageSopInstanceUid;
-        	long fileSize = 0;
-			if (File.Exists(_file.Filename))
-			{
-				var finfo = new FileInfo(_file.Filename);
+        	FileSize = 0;
 
-				fileSize = finfo.Length;
-			}
+			var finfo = new FileInfo(_file.Filename);
+			if (finfo.Exists)
+				FileSize = finfo.Length;
 
 			// Save the collection for undo purposes
         	SeriesXml seriesXml = _stream[seriesInstanceUid];
@@ -96,7 +99,7 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue
                 Platform.Log(LogLevel.Warn, "SOP was unexpectedly not in XML Study Descriptor for file: {0}",
                              _file.Filename);
             }
-        	if (false == _stream.AddFile(_file, fileSize, _outputSettings))
+			if (false == _stream.AddFile(_file, FileSize, _outputSettings))
             {
                 Platform.Log(LogLevel.Error, "Unexpected error adding SOP to XML Study Descriptor for file {0}",
                              _file.Filename);
@@ -115,18 +118,16 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue
         {
             _stream.RemoveFile(_file);
 
-			if (_saveCollection != null)
-			{
-				var file = new DicomFile(_file.Filename, new DicomAttributeCollection(), _saveCollection);
-				long fileSize = 0;
-				if (File.Exists(file.Filename))
-				{
-					var finfo = new FileInfo(file.Filename);
-					fileSize = finfo.Length;
-				}
-				_stream.AddFile(file, fileSize, _outputSettings);
-			}
-            WriteStudyStream(
+	        if (_saveCollection != null)
+	        {
+		        var file = new DicomFile(_file.Filename, new DicomAttributeCollection(), _saveCollection);
+		        long fileSize = 0;
+		        var finfo = new FileInfo(file.Filename);
+		        if (finfo.Exists)
+			        fileSize = finfo.Length;
+		        _stream.AddFile(file, fileSize, _outputSettings);
+	        }
+	        WriteStudyStream(
                 Path.Combine(_studyStorageLocation.GetStudyPath(), _studyStorageLocation.StudyInstanceUid + ".xml"),
 				Path.Combine(_studyStorageLocation.GetStudyPath(), _studyStorageLocation.StudyInstanceUid + ".xml.gz"),
                 _stream);
@@ -134,7 +135,7 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue
 
 		private static void WriteStudyStream(string streamFile, string gzStreamFile, StudyXml theStream)
 		{
-			XmlDocument doc = theStream.GetMemento(_outputSettings);
+			var theMemento = theStream.GetMemento(_outputSettings);
 
 			// allocate the random number generator here, in case we need it below
 			var rand = new Random();
@@ -143,24 +144,20 @@ namespace ClearCanvas.ImageServer.Services.WorkQueue
 			for (int i = 0; ; i++)
 				try
 				{
-					if (File.Exists(tmpStreamFile))
-						FileUtils.Delete(tmpStreamFile);
-					if (File.Exists(tmpGzStreamFile))
-						FileUtils.Delete(tmpGzStreamFile);
+					FileUtils.Delete(tmpStreamFile);
+					FileUtils.Delete(tmpGzStreamFile);
 
 					using (FileStream xmlStream = FileStreamOpener.OpenForSoleUpdate(tmpStreamFile, FileMode.CreateNew),
 									  gzipStream = FileStreamOpener.OpenForSoleUpdate(tmpGzStreamFile, FileMode.CreateNew))
 					{
-						StudyXmlIo.WriteXmlAndGzip(doc, xmlStream, gzipStream);
+						StudyXmlIo.WriteXmlAndGzip(theMemento, xmlStream, gzipStream);
 						xmlStream.Close();
 						gzipStream.Close();
 					}
 
-					if (File.Exists(streamFile))
-						FileUtils.Delete(streamFile);
+					FileUtils.Delete(streamFile);
 					File.Move(tmpStreamFile, streamFile);
-					if (File.Exists(gzStreamFile))
-						FileUtils.Delete(gzStreamFile);
+					FileUtils.Delete(gzStreamFile);
 					File.Move(tmpGzStreamFile, gzStreamFile);
 					return;
 				}

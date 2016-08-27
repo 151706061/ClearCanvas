@@ -22,6 +22,10 @@
 
 #endregion
 
+using System;
+using System.Collections.Generic;
+using ClearCanvas.Enterprise.Common;
+
 namespace ClearCanvas.Enterprise.Core
 {
 	/// <summary>
@@ -40,6 +44,12 @@ namespace ClearCanvas.Enterprise.Core
 		IEntityChangeSetRecorder ChangeSetRecorder { get; set; }
 
 		/// <summary>
+		/// Gets the set of entities that are affected by this update context, along with the type of change for each entity.
+		/// </summary>
+		/// <returns></returns>
+		IDictionary<object, EntityChangeType> GetAffectedEntities();
+
+		/// <summary>
 		/// Attempts to flush and commit all changes made within this update context to the persistent store.
 		/// </summary>
 		/// <remarks>
@@ -48,5 +58,15 @@ namespace ClearCanvas.Enterprise.Core
 		/// for read operations only. If the operation fails, an exception will be thrown.
 		/// </remarks>
 		void Commit();
+
+		/// <summary>
+		/// Occurs when the <see cref="Commit"/> method has been called, but prior to committing anything.
+		/// </summary>
+		event EventHandler PreCommit;
+
+		/// <summary>
+		/// Occurs if and when the transaction associated with this context is successfully committed.
+		/// </summary>
+		event EventHandler PostCommit;
 	}
 }
